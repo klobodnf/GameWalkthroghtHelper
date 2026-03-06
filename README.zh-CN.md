@@ -19,16 +19,22 @@
 
 ## 快速开始
 
-Windows 推荐直接双击：
+Windows 推荐直接双击启动 GUI：
 
 ```text
 start_helper.bat
 ```
 
-当不传 `game id` 时，启动器会自动：
+默认行为：
 - 扫描并导入本机 Steam 库，
-- 列出已安装游戏，
-- 让你交互式选择一个游戏。
+- 在 GUI 中列出已安装游戏，
+- 选择后即可一键启动辅助流程。
+
+也可以直接命令行打开 GUI：
+
+```powershell
+gwh gui --config config/default.yaml
+```
 
 手动命令行方式：
 
@@ -44,6 +50,12 @@ gwh run-once --config config/default.yaml --game-id "MyGame"
 
 ```powershell
 gwh run-loop --config config/default.yaml --game-id "MyGame"
+```
+
+批处理 CLI 模式（可选）：
+
+```text
+start_helper.bat cli <game_id> [once|loop]
 ```
 
 ## 热键与参数

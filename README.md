@@ -19,16 +19,22 @@ A Windows-first, non-invasive walkthrough assistant that observes game progress 
 
 ## Quick Start
 
-Double-click launcher (recommended on Windows):
+Desktop GUI launcher (recommended on Windows):
 
 ```text
 start_helper.bat
 ```
 
-When no game id is provided, the launcher will:
-- scan and import your local Steam library,
-- show installed games,
-- let you choose one to start with.
+Default behavior:
+- auto-scan and import your Steam library,
+- show installed games in a GUI selector,
+- start the selected game profile in one click.
+
+You can also launch GUI directly:
+
+```powershell
+gwh gui --config config/default.yaml
+```
 
 CLI setup (manual):
 
@@ -44,6 +50,12 @@ For continuous monitoring:
 
 ```powershell
 gwh run-loop --config config/default.yaml --game-id "MyGame"
+```
+
+CLI mode from batch (optional):
+
+```text
+start_helper.bat cli <game_id> [once|loop]
 ```
 
 ## Hotkeys and Flags

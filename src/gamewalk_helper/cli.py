@@ -4,6 +4,7 @@ import argparse
 
 from .config import load_config
 from .db import Database
+from .gui import launch_gui
 from .hotkeys import HotkeyManager
 from .pipeline import GuideAssistantApp
 from .runtime_control import RuntimeControl
@@ -35,6 +36,9 @@ def build_parser() -> argparse.ArgumentParser:
     steam_select = sub.add_parser("steam-select", help="Choose an installed Steam game interactively")
     steam_select.add_argument("--config", default="config/default.yaml", help="Path to config file")
     steam_select.add_argument("--id-only", action="store_true", help="Print only selected game_id to stdout")
+
+    gui = sub.add_parser("gui", help="Launch desktop GUI")
+    gui.add_argument("--config", default="config/default.yaml", help="Path to config file")
 
     return parser
 
@@ -142,6 +146,10 @@ def cmd_steam_select(config_path: str, id_only: bool) -> int:
     return 0
 
 
+def cmd_gui(config_path: str) -> int:
+    return launch_gui(config_path=config_path)
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -156,6 +164,8 @@ def main() -> int:
         return cmd_steam_list(args.config, args.json)
     if command == "steam-select":
         return cmd_steam_select(args.config, args.id_only)
+    if command == "gui":
+        return cmd_gui(args.config)
     parser.print_help()
     return 1
 

@@ -26,6 +26,7 @@ runtime = [
 
 [project.scripts]
 gwh = "gamewalk_helper.cli:main"
+gwh-gui = "gamewalk_helper.gui:launch_gui"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
