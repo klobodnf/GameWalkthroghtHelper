@@ -19,6 +19,14 @@
 
 ## 快速开始
 
+Windows 推荐直接双击：
+
+```text
+start_helper.bat
+```
+
+手动命令行方式：
+
 ```powershell
 python -m venv .venv
 . .\.venv\Scripts\Activate.ps1
@@ -49,4 +57,3 @@ gwh run-loop --config config/default.yaml --game-id "MyGame"
 - `tests/`：进度与语音逻辑单元测试。
 - `docs/`：设计与架构文档。
 - `scripts/`：本地开发脚本。
-

@@ -19,6 +19,14 @@ A Windows-first, non-invasive walkthrough assistant that observes game progress 
 
 ## Quick Start
 
+Double-click launcher (recommended on Windows):
+
+```text
+start_helper.bat
+```
+
+CLI setup (manual):
+
 ```powershell
 python -m venv .venv
 . .\.venv\Scripts\Activate.ps1

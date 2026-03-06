@@ -35,5 +35,6 @@ When adding executable modules, also add and document stable project commands (v
 - There is no stable history yet; adopt Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`).
 - Keep each commit focused on one logical change.
 - If the maintainer explicitly asks for "auto commit and push", commit all current tracked changes with a clear Conventional Commit message and push directly to `origin/main`.
+- Current maintainer preference: after requested code/document changes are completed, auto-commit and auto-push to `origin/main` by default unless the maintainer says not to push.
 - PRs should include a short summary, motivation, and test evidence.
 - Add screenshots or logs when behavior/UI changes, and link related issue IDs.
