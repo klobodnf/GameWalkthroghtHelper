@@ -1,12 +1,42 @@
-.venv/
+# Python bytecode/cache
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.Python
+pip-wheel-metadata/
+
+# Test / coverage / type tooling
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 .coverage
-dist/
-build/
-*.egg-info/
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Local runtime data
 data/
 logs/
+
+# IDE / editor
+.idea/
+.vscode/
+.cursorignore
+.cursorindexingignore
+
+# OS / misc
+.DS_Store
+Thumbs.db
 

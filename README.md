@@ -1,4 +1,4 @@
-# GameWalkthroughHelper
+# GameWalkthroghtHelper
 
 Windows-first, non-invasive walkthrough helper that observes on-screen game progress with OCR/CV and gives real-time voice hints.
 
@@ -34,3 +34,4 @@ gwh run-loop --config config/default.yaml --game-id "MyGame"
 - `tests/`: unit tests for decision and voice logic.
 - `docs/`: design and architecture notes.
 - `scripts/`: helper scripts for local development.
+
