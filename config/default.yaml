@@ -9,5 +9,12 @@ max_suggestions: 2
 roi_auto_detect: true
 roi_min_score: 0.25
 roi_switch_margin: 0.08
+overlay_enabled: true
+overlay_width: 560
+overlay_height: 220
+overlay_pos_x: 24
+overlay_pos_y: 24
+hotkeys_enabled: true
+default_detail_level: 1
 task_roi: null
 template_dir: assets/templates

@@ -32,11 +32,13 @@ class VoiceCoachTests(unittest.TestCase):
                 first = coach.try_speak("TestGame", "下一步去村庄")
                 second = coach.try_speak("TestGame", "下一步  去村庄")
                 third = coach.try_speak("TestGame", "现在打开背包")
+                forced = coach.try_speak("TestGame", "下一步去村庄", ignore_cooldown=True)
 
                 self.assertTrue(first)
                 self.assertFalse(second)
                 self.assertTrue(third)
-                self.assertEqual(len(speaker.messages), 2)
+                self.assertTrue(forced)
+                self.assertEqual(len(speaker.messages), 3)
             finally:
                 db.close()
 

@@ -4,7 +4,10 @@ import argparse
 
 from .config import load_config
 from .db import Database
+from .hotkeys import HotkeyManager
 from .pipeline import GuideAssistantApp
+from .runtime_control import RuntimeControl
+from .ui.overlay import OverlayWindow
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -21,6 +24,8 @@ def build_parser() -> argparse.ArgumentParser:
     loop = sub.add_parser("run-loop", help="Run continuous perception loop")
     loop.add_argument("--config", default="config/default.yaml", help="Path to config file")
     loop.add_argument("--game-id", required=True, help="Logical game identifier")
+    loop.add_argument("--no-overlay", action="store_true", help="Disable floating overlay window")
+    loop.add_argument("--no-hotkeys", action="store_true", help="Disable global hotkeys")
 
     return parser
 
@@ -47,10 +52,21 @@ def cmd_run_once(config_path: str, game_id: str) -> int:
     return 0
 
 
-def cmd_run_loop(config_path: str, game_id: str) -> int:
+def cmd_run_loop(config_path: str, game_id: str, no_overlay: bool, no_hotkeys: bool) -> int:
     config = load_config(config_path)
     app = GuideAssistantApp(config)
-    app.run_loop(game_id=game_id)
+    control = RuntimeControl(initial_detail_level=config.default_detail_level)
+    overlay_enabled = config.overlay_enabled and not no_overlay
+    hotkeys_enabled = config.hotkeys_enabled and not no_hotkeys
+    overlay = OverlayWindow(
+        enabled=overlay_enabled,
+        width=config.overlay_width,
+        height=config.overlay_height,
+        pos_x=config.overlay_pos_x,
+        pos_y=config.overlay_pos_y,
+    )
+    hotkeys = HotkeyManager(control=control, enabled=hotkeys_enabled)
+    app.run_loop(game_id=game_id, control=control, overlay=overlay, hotkeys=hotkeys)
     return 0
 
 
@@ -63,7 +79,7 @@ def main() -> int:
     if command == "run-once":
         return cmd_run_once(args.config, args.game_id)
     if command == "run-loop":
-        return cmd_run_loop(args.config, args.game_id)
+        return cmd_run_loop(args.config, args.game_id, args.no_overlay, args.no_hotkeys)
     parser.print_help()
     return 1
 

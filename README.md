@@ -17,6 +17,8 @@ English: A Windows-first, non-invasive walkthrough assistant that observes game 
   Voice cooldown/dedup to avoid repetitive prompts.
 - 可插拔攻略检索（在线获取 + 本地缓存）  
   Pluggable guide retrieval (online fetch + local cache).
+- 悬浮提示窗与全局热键控制（静音/暂停/强制刷新）  
+  Floating overlay and global hotkeys (mute/pause/force refresh).
 
 ## 快速开始 / Quick Start
 
@@ -34,6 +36,15 @@ English: Command for continuous monitoring
 ```powershell
 gwh run-loop --config config/default.yaml --game-id "MyGame"
 ```
+
+## 热键与参数 / Hotkeys and Flags
+
+- `Ctrl+Alt+M`：切换语音静音 / Toggle voice mute.
+- `Ctrl+Alt+P`：暂停或恢复识别 / Pause or resume recognition.
+- `Ctrl+Alt+H`：立即刷新并播报一次提示 / Force an immediate hint refresh.
+- `Ctrl+Alt+D`：切换提示详细级别（L0-L2） / Cycle hint detail level (L0-L2).
+- `Ctrl+Alt+Q`：停止运行 / Stop the loop.
+- 关闭组件可用：`--no-overlay`、`--no-hotkeys` / Optional flags: `--no-overlay`, `--no-hotkeys`.
 
 ## 项目结构 / Project Layout
 

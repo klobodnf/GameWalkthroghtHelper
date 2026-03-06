@@ -24,10 +24,10 @@ class VoiceCoach:
         self.cooldown_seconds = cooldown_seconds
         self.speaker = speaker or Speaker()
 
-    def try_speak(self, game_id: str, text: str) -> bool:
+    def try_speak(self, game_id: str, text: str, ignore_cooldown: bool = False) -> bool:
         normalized = _normalize(text)
         voice_key = _voice_key(game_id, normalized)
-        if not self.db.should_speak(voice_key):
+        if not ignore_cooldown and not self.db.should_speak(voice_key):
             return False
         self.speaker.say(text)
         self.db.mark_spoken(

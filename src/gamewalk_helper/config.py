@@ -19,6 +19,13 @@ class AppConfig:
     roi_auto_detect: bool = True
     roi_min_score: float = 0.25
     roi_switch_margin: float = 0.08
+    overlay_enabled: bool = True
+    overlay_width: int = 560
+    overlay_height: int = 220
+    overlay_pos_x: int = 24
+    overlay_pos_y: int = 24
+    hotkeys_enabled: bool = True
+    default_detail_level: int = 1
     task_roi: dict[str, int] | None = None
     template_dir: str = "assets/templates"
 

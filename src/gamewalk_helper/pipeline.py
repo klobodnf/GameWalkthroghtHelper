@@ -8,11 +8,14 @@ from .capture.screen import ScreenCapture
 from .config import AppConfig
 from .db import Database
 from .guides.fetcher import GuideFetcher
+from .hotkeys import HotkeyManager
 from .models import Observation, ProgressDecision
 from .perception.cv import CvMatcher
 from .perception.ocr import OcrEngine
 from .perception.roi import TaskRoiLocator
 from .progress import ProgressEngine
+from .runtime_control import ControlSnapshot, RuntimeControl
+from .ui.overlay import OverlayStatus, OverlayWindow
 from .voice import VoiceCoach
 
 
@@ -20,6 +23,8 @@ from .voice import VoiceCoach
 class TickResult:
     decision: ProgressDecision
     observation: Observation | None
+    hint_text: str = ""
+    spoken: bool = False
 
 
 class GuideAssistantApp:
@@ -56,7 +61,14 @@ class GuideAssistantApp:
         self.db.end_session(self.session_id)
         self.session_id = None
 
-    def run_once(self, game_id: str) -> TickResult:
+    def run_once(
+        self,
+        game_id: str,
+        *,
+        speak: bool = True,
+        force_voice: bool = False,
+        detail_level: int = 1,
+    ) -> TickResult:
         if self.session_id is None:
             self.start_session(game_id)
         assert self.session_id is not None
@@ -66,6 +78,7 @@ class GuideAssistantApp:
             return TickResult(
                 decision=ProgressDecision(definitive=False, primary=None, alternatives=[]),
                 observation=None,
+                hint_text="未获取到屏幕帧。",
             )
 
         roi_selection = self.roi_locator.locate(frame.image, self.ocr)
@@ -89,7 +102,7 @@ class GuideAssistantApp:
             candidates=candidates,
             previous_state_id=previous_state,
         )
-        next_action = decision.speech_text
+        next_action = _format_hint_text(decision, detail_level=detail_level)
         state_id = decision.primary.candidate.state_id if decision.primary else None
         confidence = decision.primary.total if decision.primary else 0.0
         self.db.save_progress_state(
@@ -100,22 +113,146 @@ class GuideAssistantApp:
             next_action=next_action,
             definitive=decision.definitive,
         )
-        if decision.primary is not None:
-            self.voice.try_speak(game_id=game_id, text=next_action)
-        return TickResult(decision=decision, observation=observation)
+        should_voice = speak and (decision.primary is not None or force_voice)
+        spoken = False
+        if should_voice:
+            spoken = self.voice.try_speak(
+                game_id=game_id,
+                text=next_action,
+                ignore_cooldown=force_voice,
+            )
+        return TickResult(decision=decision, observation=observation, hint_text=next_action, spoken=spoken)
 
-    def run_loop(self, game_id: str) -> None:
+    def run_loop(
+        self,
+        game_id: str,
+        control: RuntimeControl | None = None,
+        overlay: OverlayWindow | None = None,
+        hotkeys: HotkeyManager | None = None,
+    ) -> None:
+        runtime_control = control or RuntimeControl()
+        overlay_enabled = overlay.start() if overlay is not None else False
+        hotkeys_enabled = hotkeys.start() if hotkeys is not None else False
+        if hotkeys_enabled:
+            print("全局热键已启用。")
+        if overlay_enabled:
+            print("悬浮窗已启用。")
+
+        last_hint = "等待识别任务文本..."
+        last_task = ""
+
         try:
-            while True:
-                result = self.run_once(game_id)
+            while not runtime_control.should_stop():
+                force_hint = runtime_control.consume_force_hint()
+                snapshot = runtime_control.snapshot()
+
+                if snapshot.paused and not force_hint:
+                    self._publish_overlay(
+                        overlay=overlay,
+                        game_id=game_id,
+                        task_text=last_task,
+                        hint_text=last_hint,
+                        confidence=0.0,
+                        definitive=False,
+                        snapshot=snapshot,
+                    )
+                    sleep(self.config.loop_interval_seconds)
+                    continue
+
+                result = self.run_once(
+                    game_id,
+                    speak=not snapshot.muted,
+                    force_voice=force_hint,
+                    detail_level=snapshot.detail_level,
+                )
                 if result.observation is None:
                     print("未获取到屏幕帧，等待下一轮。")
+                    self._publish_overlay(
+                        overlay=overlay,
+                        game_id=game_id,
+                        task_text=last_task,
+                        hint_text=result.hint_text or last_hint,
+                        confidence=0.0,
+                        definitive=False,
+                        snapshot=snapshot,
+                    )
                 else:
+                    last_task = result.observation.task_text
+                    last_hint = result.hint_text
                     text = result.observation.task_text or "<empty>"
+                    confidence = 0.0
+                    definitive = False
+                    if result.decision.primary is not None:
+                        confidence = result.decision.primary.total
+                        definitive = result.decision.definitive
+                    self._publish_overlay(
+                        overlay=overlay,
+                        game_id=game_id,
+                        task_text=text,
+                        hint_text=result.hint_text,
+                        confidence=confidence,
+                        definitive=definitive,
+                        snapshot=snapshot,
+                    )
                     print(f"[{result.observation.timestamp.isoformat()}] task={text}")
                 sleep(self.config.loop_interval_seconds)
         except KeyboardInterrupt:
             print("停止监控。")
         finally:
+            if hotkeys is not None:
+                hotkeys.stop()
+            if overlay is not None:
+                overlay.stop()
             self.stop_session()
             self.db.close()
+
+    def _publish_overlay(
+        self,
+        overlay: OverlayWindow | None,
+        game_id: str,
+        task_text: str,
+        hint_text: str,
+        confidence: float,
+        definitive: bool,
+        snapshot: ControlSnapshot,
+    ) -> None:
+        if overlay is None:
+            return
+        overlay.update(
+            OverlayStatus(
+                game_id=game_id,
+                task_text=task_text,
+                hint_text=hint_text,
+                confidence=max(0.0, min(confidence, 1.0)),
+                definitive=definitive,
+                muted=snapshot.muted,
+                paused=snapshot.paused,
+                detail_level=snapshot.detail_level,
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+
+
+def _format_hint_text(decision: ProgressDecision, detail_level: int) -> str:
+    if decision.primary is None:
+        return "暂时无法确认下一步，建议继续观察任务提示。"
+
+    action = decision.primary.candidate.action_text.strip()
+    if detail_level <= 0:
+        return action
+
+    if decision.definitive:
+        if detail_level == 1:
+            return f"下一步：{action}"
+        detail_suffix = ""
+        source = decision.primary.candidate.source_url.strip()
+        if source:
+            detail_suffix = f" 参考: {source}"
+        return f"下一步建议：{action}{detail_suffix}"
+
+    options = [action]
+    options.extend(item.candidate.action_text.strip() for item in decision.alternatives[:1] if item.candidate.action_text.strip())
+    joined = " 或 ".join(options)
+    if detail_level == 1:
+        return f"候选步骤：{joined}"
+    return f"当前不够确定，候选步骤：{joined}。建议按任务面板再确认一次。"
