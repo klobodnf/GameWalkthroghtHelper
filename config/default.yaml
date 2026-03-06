@@ -1,0 +1,13 @@
+db_path: data/gamewalk.db
+capture_fps: 1.0
+loop_interval_seconds: 1.0
+voice_cooldown_seconds: 30
+confidence_strong_threshold: 0.65
+confidence_margin_threshold: 0.15
+query_ttl_hours: 24
+max_suggestions: 2
+roi_auto_detect: true
+roi_min_score: 0.25
+roi_switch_margin: 0.08
+task_roi: null
+template_dir: assets/templates
