@@ -25,6 +25,11 @@ Windows 推荐直接双击：
 start_helper.bat
 ```
 
+当不传 `game id` 时，启动器会自动：
+- 扫描并导入本机 Steam 库，
+- 列出已安装游戏，
+- 让你交互式选择一个游戏。
+
 手动命令行方式：
 
 ```powershell
@@ -49,6 +54,20 @@ gwh run-loop --config config/default.yaml --game-id "MyGame"
 - `Ctrl+Alt+D`：切换提示详细级别（L0-L2）。
 - `Ctrl+Alt+Q`：停止运行。
 - 可选参数：`--no-overlay`、`--no-hotkeys`。
+
+## Steam 集成
+
+- 列出已安装 Steam 游戏：
+
+```powershell
+gwh steam-list --config config/default.yaml
+```
+
+- 交互式选择 Steam 游戏并输出 `game_id`：
+
+```powershell
+gwh steam-select --config config/default.yaml --id-only
+```
 
 ## 项目结构
 

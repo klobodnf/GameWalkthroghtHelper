@@ -54,14 +54,34 @@ if errorlevel 1 (
     goto :fail
 )
 
-set "GAME_ID=%~1"
+set "ARG1=%~1"
+set "ARG2=%~2"
+set "GAME_ID="
+set "RUN_MODE=loop"
+
+if /I "%ARG1%"=="once" (
+    set "RUN_MODE=once"
+) else if /I "%ARG1%"=="loop" (
+    set "RUN_MODE=loop"
+) else (
+    set "GAME_ID=%ARG1%"
+    if not "%ARG2%"=="" set "RUN_MODE=%ARG2%"
+)
+
 if "%GAME_ID%"=="" (
-    set /p GAME_ID=Input game id ^(default: DemoGame^): 
+    echo [INFO] Scanning Steam library and importing installed games...
+    set "GWH_PICK_FILE=.gwh_selected_game.txt"
+    if exist "%GWH_PICK_FILE%" del /f /q "%GWH_PICK_FILE%" >nul 2>nul
+    python -m gamewalk_helper steam-select --config config/default.yaml --id-only > "%GWH_PICK_FILE%"
+    if exist "%GWH_PICK_FILE%" (
+        set /p GAME_ID=<"%GWH_PICK_FILE%"
+        del /f /q "%GWH_PICK_FILE%" >nul 2>nul
+    )
+)
+if "%GAME_ID%"=="" (
+    set /p GAME_ID=Input game id ^(fallback, default: DemoGame^): 
 )
 if "%GAME_ID%"=="" set "GAME_ID=DemoGame"
-
-set "RUN_MODE=%~2"
-if "%RUN_MODE%"=="" set "RUN_MODE=loop"
 
 echo [INFO] game-id: %GAME_ID%
 echo [INFO] mode: %RUN_MODE%

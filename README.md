@@ -25,6 +25,11 @@ Double-click launcher (recommended on Windows):
 start_helper.bat
 ```
 
+When no game id is provided, the launcher will:
+- scan and import your local Steam library,
+- show installed games,
+- let you choose one to start with.
+
 CLI setup (manual):
 
 ```powershell
@@ -49,6 +54,20 @@ gwh run-loop --config config/default.yaml --game-id "MyGame"
 - `Ctrl+Alt+D`: Cycle hint detail level (L0-L2).
 - `Ctrl+Alt+Q`: Stop the loop.
 - Optional flags: `--no-overlay`, `--no-hotkeys`.
+
+## Steam Integration
+
+- List installed Steam games:
+
+```powershell
+gwh steam-list --config config/default.yaml
+```
+
+- Interactively select one game and output its `game_id`:
+
+```powershell
+gwh steam-select --config config/default.yaml --id-only
+```
 
 ## Project Layout
 

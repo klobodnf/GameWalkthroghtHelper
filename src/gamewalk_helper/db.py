@@ -116,6 +116,17 @@ class Database:
               cooldown_until TEXT NOT NULL,
               updated_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS steam_apps (
+              app_id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              install_dir TEXT,
+              library_path TEXT,
+              last_seen_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_steam_apps_name
+              ON steam_apps(name);
             """
         )
         self._conn.commit()
@@ -275,6 +286,31 @@ class Database:
             """,
             (voice_key, game_id, message, cooldown_until.isoformat(), now.isoformat()),
         )
+        self._conn.commit()
+
+    def sync_steam_apps(self, apps: list[dict[str, str]]) -> None:
+        now = _utc_now().isoformat()
+        if not apps:
+            return
+        for app in apps:
+            self._conn.execute(
+                """
+                INSERT INTO steam_apps(app_id, name, install_dir, library_path, last_seen_at)
+                VALUES(?, ?, ?, ?, ?)
+                ON CONFLICT(app_id) DO UPDATE SET
+                  name=excluded.name,
+                  install_dir=excluded.install_dir,
+                  library_path=excluded.library_path,
+                  last_seen_at=excluded.last_seen_at
+                """,
+                (
+                    app.get("app_id", ""),
+                    app.get("name", ""),
+                    app.get("install_dir", ""),
+                    app.get("library_path", ""),
+                    now,
+                ),
+            )
         self._conn.commit()
 
 
