@@ -10,6 +10,7 @@
 6. Speak the result if cooldown allows, and expose text for overlay UI.
 7. Runtime control plane handles global hotkeys (mute/pause/force refresh/detail level).
 8. Desktop GUI (Tkinter) provides Steam game selection and start/stop orchestration.
+9. Voice coach supports app-level volume control for TTS playback.
 
 ## Design rules
 

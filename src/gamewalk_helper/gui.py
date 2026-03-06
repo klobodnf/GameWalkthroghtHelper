@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from queue import Empty, Queue
 from threading import Thread
-from tkinter import BOTH, END, LEFT, RIGHT, StringVar, Tk, W, messagebox, ttk
+from tkinter import BOTH, END, HORIZONTAL, LEFT, RIGHT, DoubleVar, StringVar, Tk, W, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 import traceback
 
-from .config import AppConfig, load_config
+from .config import load_config
 from .db import Database
 from .hotkeys import HotkeyManager
 from .pipeline import GuideAssistantApp
 from .runtime_control import RuntimeControl
 from .steam import SteamGame, scan_installed_games
 from .ui.overlay import OverlayWindow
+from .voice import clamp_volume
 
 
 @dataclass(slots=True)
@@ -25,6 +25,7 @@ class GuiRunOptions:
     run_mode: str
     overlay_enabled: bool
     hotkeys_enabled: bool
+    voice_volume: float
 
 
 def game_display_name(game: SteamGame) -> str:
@@ -55,12 +56,16 @@ class GuideDesktopApp:
         self._display_to_id: dict[str, str] = {}
         self._worker: Thread | None = None
         self._runtime_control: RuntimeControl | None = None
+        self._active_app: GuideAssistantApp | None = None
 
         self.selected_game_var = StringVar(value="")
         self.manual_game_id_var = StringVar(value="")
         self.mode_var = StringVar(value="loop")
         self.overlay_var = StringVar(value="1" if self.base_config.overlay_enabled else "0")
         self.hotkeys_var = StringVar(value="1" if self.base_config.hotkeys_enabled else "0")
+        initial_volume = clamp_volume(self.base_config.voice_volume)
+        self.voice_volume_var = DoubleVar(value=round(initial_volume * 100, 0))
+        self.voice_volume_label_var = StringVar(value=self._format_volume_percent(initial_volume))
         self.status_var = StringVar(value="Ready")
 
         self._build_ui()
@@ -115,6 +120,23 @@ class GuideDesktopApp:
         ttk.Checkbutton(toggle_bar, text="Enable Overlay", variable=self.overlay_var, onvalue="1", offvalue="0").pack(side=LEFT)
         ttk.Checkbutton(toggle_bar, text="Enable Global Hotkeys", variable=self.hotkeys_var, onvalue="1", offvalue="0").pack(side=LEFT, padx=(10, 0))
 
+        voice_bar = ttk.Frame(options)
+        voice_bar.pack(fill="x", pady=(8, 0))
+        ttk.Label(voice_bar, text="Voice Volume").pack(side=LEFT)
+        self.voice_scale = ttk.Scale(
+            voice_bar,
+            from_=0,
+            to=100,
+            orient=HORIZONTAL,
+            variable=self.voice_volume_var,
+            command=self._on_volume_change,
+            length=260,
+        )
+        self.voice_scale.pack(side=LEFT, padx=(10, 8))
+        ttk.Label(voice_bar, textvariable=self.voice_volume_label_var, width=6).pack(side=LEFT)
+        self.apply_volume_btn = ttk.Button(voice_bar, text="Apply", command=self.apply_voice_volume)
+        self.apply_volume_btn.pack(side=LEFT, padx=(8, 0))
+
         action_bar = ttk.Frame(frame)
         action_bar.pack(fill="x", pady=(0, 10))
         self.start_btn = ttk.Button(action_bar, text="Start", command=self.start_run)
@@ -165,7 +187,7 @@ class GuideDesktopApp:
 
         self._set_running_state(True)
         self._enqueue_log(
-            f"Starting mode={options.run_mode}, game_id={options.game_id}, overlay={options.overlay_enabled}, hotkeys={options.hotkeys_enabled}"
+            f"Starting mode={options.run_mode}, game_id={options.game_id}, overlay={options.overlay_enabled}, hotkeys={options.hotkeys_enabled}, voice_volume={options.voice_volume:.2f}"
         )
         self._worker = Thread(target=self._run_worker, args=(options,), name="gwh-gui-worker", daemon=True)
         self._worker.start()
@@ -181,7 +203,9 @@ class GuideDesktopApp:
             config = load_config(self.config_path)
             config.overlay_enabled = options.overlay_enabled
             config.hotkeys_enabled = options.hotkeys_enabled
+            config.voice_volume = options.voice_volume
             app = GuideAssistantApp(config)
+            self._active_app = app
 
             if options.run_mode == "once":
                 result = app.run_once(options.game_id)
@@ -209,6 +233,7 @@ class GuideDesktopApp:
             self._enqueue_log("Unhandled error in GUI worker:")
             self._enqueue_log(traceback.format_exc())
         finally:
+            self._active_app = None
             self._runtime_control = None
             self._queue.put(("done", ""))
 
@@ -226,6 +251,7 @@ class GuideDesktopApp:
             run_mode=self.mode_var.get().strip().lower(),
             overlay_enabled=self.overlay_var.get() == "1",
             hotkeys_enabled=self.hotkeys_var.get() == "1",
+            voice_volume=clamp_volume(self.voice_volume_var.get() / 100.0),
         )
 
     def _set_running_state(self, running: bool) -> None:
@@ -270,6 +296,24 @@ class GuideDesktopApp:
             self._runtime_control.stop()
         self.root.destroy()
 
+    def apply_voice_volume(self) -> None:
+        volume = clamp_volume(self.voice_volume_var.get() / 100.0)
+        self.voice_volume_label_var.set(self._format_volume_percent(volume))
+        app = self._active_app
+        if app is None:
+            self._enqueue_log(f"Voice volume set to {volume:.2f} (takes effect on next start).")
+            return
+        applied = app.voice.set_volume(volume)
+        self._enqueue_log(f"Voice volume updated: {applied:.2f}")
+
+    def _on_volume_change(self, _value: str) -> None:
+        volume = clamp_volume(self.voice_volume_var.get() / 100.0)
+        self.voice_volume_label_var.set(self._format_volume_percent(volume))
+
+    @staticmethod
+    def _format_volume_percent(volume: float) -> str:
+        return f"{int(round(volume * 100)):d}%"
+
 
 def launch_gui(config_path: str = "config/default.yaml") -> int:
     if not Path(config_path).exists():
@@ -278,4 +322,3 @@ def launch_gui(config_path: str = "config/default.yaml") -> int:
     app = GuideDesktopApp(config_path=config_path)
     app.start()
     return 0
-

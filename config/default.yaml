@@ -2,6 +2,7 @@ db_path: data/gamewalk.db
 capture_fps: 1.0
 loop_interval_seconds: 1.0
 voice_cooldown_seconds: 30
+voice_volume: 0.8
 confidence_strong_threshold: 0.65
 confidence_margin_threshold: 0.15
 query_ttl_hours: 24

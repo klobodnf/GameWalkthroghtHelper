@@ -8,15 +8,20 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from gamewalk_helper.db import Database
-from gamewalk_helper.voice import VoiceCoach
+from gamewalk_helper.voice import VoiceCoach, clamp_volume
 
 
 class FakeSpeaker:
     def __init__(self) -> None:
         self.messages: list[str] = []
+        self.volumes: list[float] = []
 
     def say(self, text: str) -> None:
         self.messages.append(text)
+
+    def set_volume(self, value: float) -> float:
+        self.volumes.append(value)
+        return value
 
 
 class VoiceCoachTests(unittest.TestCase):
@@ -39,8 +44,19 @@ class VoiceCoachTests(unittest.TestCase):
                 self.assertTrue(third)
                 self.assertTrue(forced)
                 self.assertEqual(len(speaker.messages), 3)
+                self.assertAlmostEqual(speaker.volumes[-1], 1.0, places=6)
+
+                updated = coach.set_volume(0.35)
+                self.assertAlmostEqual(updated, 0.35, places=6)
+                self.assertAlmostEqual(coach.get_volume(), 0.35, places=6)
+                self.assertAlmostEqual(speaker.volumes[-1], 0.35, places=6)
             finally:
                 db.close()
+
+    def test_clamp_volume(self) -> None:
+        self.assertEqual(clamp_volume(-1.0), 0.0)
+        self.assertEqual(clamp_volume(2.0), 1.0)
+        self.assertAlmostEqual(clamp_volume(0.62), 0.62, places=6)
 
 
 if __name__ == "__main__":

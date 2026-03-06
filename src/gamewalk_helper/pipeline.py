@@ -47,7 +47,11 @@ class GuideAssistantApp:
             margin_threshold=config.confidence_margin_threshold,
             max_suggestions=config.max_suggestions,
         )
-        self.voice = VoiceCoach(self.db, cooldown_seconds=config.voice_cooldown_seconds)
+        self.voice = VoiceCoach(
+            self.db,
+            cooldown_seconds=config.voice_cooldown_seconds,
+            voice_volume=config.voice_volume,
+        )
         self.session_id: int | None = None
 
     def start_session(self, game_id: str) -> int:

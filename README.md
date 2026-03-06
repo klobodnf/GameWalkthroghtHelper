@@ -14,6 +14,7 @@ A Windows-first, non-invasive walkthrough assistant that observes game progress 
 - Local cache and session store with SQLite.
 - Rule-based progress scoring with confidence and fallback suggestions.
 - Voice cooldown/dedup to avoid repetitive prompts.
+- App-level voice volume control (independent in-app TTS level).
 - Pluggable guide retrieval (online fetch + local cache).
 - Floating overlay and global hotkeys (mute/pause/force refresh).
 
@@ -29,6 +30,7 @@ Default behavior:
 - auto-scan and import your Steam library,
 - show installed games in a GUI selector,
 - start the selected game profile in one click.
+- adjust voice volume in GUI (`Voice Volume` slider + `Apply` button).
 
 You can also launch GUI directly:
 
