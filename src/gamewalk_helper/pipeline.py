@@ -7,7 +7,7 @@ from time import sleep
 from .capture.screen import ScreenCapture
 from .config import AppConfig
 from .db import Database
-from .guides.fetcher import GuideFetcher
+from .guides.fetcher import GuideFetcher, parse_source_domains
 from .hotkeys import HotkeyManager
 from .models import Observation, ProgressDecision
 from .perception.cv import CvMatcher
@@ -41,7 +41,13 @@ class GuideAssistantApp:
             switch_margin=config.roi_switch_margin,
         )
         self.cv = CvMatcher(config.template_dir)
-        self.fetcher = GuideFetcher(self.db, ttl_hours=config.query_ttl_hours)
+        self.fetcher = GuideFetcher(
+            self.db,
+            ttl_hours=config.query_ttl_hours,
+            preferred_domains=parse_source_domains(config.guide_source_domains),
+            per_source_limit=config.guide_per_source_limit,
+            max_candidates=config.guide_max_candidates,
+        )
         self.progress = ProgressEngine(
             strong_threshold=config.confidence_strong_threshold,
             margin_threshold=config.confidence_margin_threshold,

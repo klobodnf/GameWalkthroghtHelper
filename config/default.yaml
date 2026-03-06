@@ -6,6 +6,9 @@ voice_volume: 0.8
 confidence_strong_threshold: 0.65
 confidence_margin_threshold: 0.15
 query_ttl_hours: 24
+guide_source_domains: "gamersky.com,3dmgame.com,steamcommunity.com"
+guide_per_source_limit: 2
+guide_max_candidates: 8
 max_suggestions: 2
 roi_auto_detect: true
 roi_min_score: 0.25

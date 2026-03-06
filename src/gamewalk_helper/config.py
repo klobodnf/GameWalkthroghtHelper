@@ -16,6 +16,9 @@ class AppConfig:
     confidence_strong_threshold: float = 0.65
     confidence_margin_threshold: float = 0.15
     query_ttl_hours: int = 24
+    guide_source_domains: str = "gamersky.com,3dmgame.com,steamcommunity.com"
+    guide_per_source_limit: int = 2
+    guide_max_candidates: int = 8
     max_suggestions: int = 2
     roi_auto_detect: bool = True
     roi_min_score: float = 0.25

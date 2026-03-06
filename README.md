@@ -83,6 +83,21 @@ gwh steam-list --config config/default.yaml
 gwh steam-select --config config/default.yaml --id-only
 ```
 
+## Guide Sources
+
+Default preferred guide sources:
+- `gamersky.com`
+- `3dmgame.com`
+- `steamcommunity.com` (Steam Community Guides)
+
+You can change source priority in `config/default.yaml`:
+
+```yaml
+guide_source_domains: "gamersky.com,3dmgame.com,steamcommunity.com"
+guide_per_source_limit: 2
+guide_max_candidates: 8
+```
+
 ## Project Layout
 
 - `src/gamewalk_helper/`: Core application modules.

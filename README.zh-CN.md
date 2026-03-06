@@ -83,6 +83,21 @@ gwh steam-list --config config/default.yaml
 gwh steam-select --config config/default.yaml --id-only
 ```
 
+## 攻略来源
+
+默认优先来源：
+- `gamersky.com`（游民星空）
+- `3dmgame.com`（3DM）
+- `steamcommunity.com`（Steam 社区指南）
+
+可在 `config/default.yaml` 调整优先级与数量：
+
+```yaml
+guide_source_domains: "gamersky.com,3dmgame.com,steamcommunity.com"
+guide_per_source_limit: 2
+guide_max_candidates: 8
+```
+
 ## 项目结构
 
 - `src/gamewalk_helper/`：核心应用模块。
