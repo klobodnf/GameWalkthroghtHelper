@@ -3,6 +3,12 @@ capture_fps: 1.0
 loop_interval_seconds: 1.0
 voice_cooldown_seconds: 30
 voice_volume: 0.8
+scene_match_enabled: true
+scene_match_when_no_task: true
+scene_hash_size: 16
+scene_match_distance_threshold: 64
+scene_confidence_threshold: 0.75
+scene_keyframe_dir: assets/keyframes
 confidence_strong_threshold: 0.65
 confidence_margin_threshold: 0.15
 query_ttl_hours: 24

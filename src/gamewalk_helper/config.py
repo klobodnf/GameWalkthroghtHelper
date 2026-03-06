@@ -13,6 +13,12 @@ class AppConfig:
     loop_interval_seconds: float = 1.0
     voice_cooldown_seconds: int = 30
     voice_volume: float = 0.8
+    scene_match_enabled: bool = True
+    scene_match_when_no_task: bool = True
+    scene_hash_size: int = 16
+    scene_match_distance_threshold: int = 64
+    scene_confidence_threshold: float = 0.75
+    scene_keyframe_dir: str = "assets/keyframes"
     confidence_strong_threshold: float = 0.65
     confidence_margin_threshold: float = 0.15
     query_ttl_hours: int = 24

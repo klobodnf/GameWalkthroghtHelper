@@ -14,6 +14,7 @@ from .db import Database
 from .hotkeys import HotkeyManager
 from .pipeline import GuideAssistantApp
 from .runtime_control import RuntimeControl
+from .scene import SceneKeyframeManager
 from .steam import SteamGame, scan_installed_games
 from .ui.overlay import OverlayWindow
 from .voice import clamp_volume
@@ -60,6 +61,8 @@ class GuideDesktopApp:
 
         self.selected_game_var = StringVar(value="")
         self.manual_game_id_var = StringVar(value="")
+        self.scene_label_var = StringVar(value="")
+        self.scene_action_var = StringVar(value="")
         self.mode_var = StringVar(value="loop")
         self.overlay_var = StringVar(value="1" if self.base_config.overlay_enabled else "0")
         self.hotkeys_var = StringVar(value="1" if self.base_config.hotkeys_enabled else "0")
@@ -87,6 +90,7 @@ class GuideDesktopApp:
         steam_bar = ttk.Frame(frame)
         steam_bar.pack(fill="x", pady=(0, 8))
         ttk.Button(steam_bar, text="Refresh Steam Library", command=self.refresh_steam_games).pack(side=LEFT)
+        ttk.Button(steam_bar, text="List Scene Keyframes", command=self.list_scene_keyframes).pack(side=LEFT, padx=(8, 0))
         ttk.Label(steam_bar, textvariable=self.status_var, foreground="#0066aa").pack(side=LEFT, padx=(12, 0))
 
         picker = ttk.Frame(frame)
@@ -105,6 +109,16 @@ class GuideDesktopApp:
         manual.pack(fill="x", pady=(0, 12))
         ttk.Label(manual, text="Manual game_id (optional, overrides selection)").pack(anchor=W)
         ttk.Entry(manual, textvariable=self.manual_game_id_var).pack(fill="x")
+
+        scene_frame = ttk.LabelFrame(frame, text="No-task Scene Keyframe Capture", padding=10)
+        scene_frame.pack(fill="x", pady=(0, 10))
+        scene_row = ttk.Frame(scene_frame)
+        scene_row.pack(fill="x")
+        ttk.Label(scene_row, text="Label").pack(side=LEFT)
+        ttk.Entry(scene_row, textvariable=self.scene_label_var, width=28).pack(side=LEFT, padx=(8, 12))
+        ttk.Label(scene_row, text="Action Hint").pack(side=LEFT)
+        ttk.Entry(scene_row, textvariable=self.scene_action_var, width=42).pack(side=LEFT, padx=(8, 12))
+        ttk.Button(scene_row, text="Capture Current Screen", command=self.capture_scene_keyframe).pack(side=LEFT)
 
         options = ttk.LabelFrame(frame, text="Run Options", padding=10)
         options.pack(fill="x", pady=(0, 10))
@@ -238,11 +252,7 @@ class GuideDesktopApp:
             self._queue.put(("done", ""))
 
     def _collect_options(self) -> GuiRunOptions | None:
-        game_id = resolve_game_id(
-            display_name=self.selected_game_var.get(),
-            lookup=self._display_to_id,
-            manual_game_id=self.manual_game_id_var.get(),
-        )
+        game_id = self._current_game_id()
         if not game_id:
             messagebox.showwarning("No game selected", "Please choose a Steam game or input manual game_id.")
             return None
@@ -295,6 +305,73 @@ class GuideDesktopApp:
                 return
             self._runtime_control.stop()
         self.root.destroy()
+
+    def capture_scene_keyframe(self) -> None:
+        from .capture.screen import ScreenCapture
+
+        game_id = self._current_game_id()
+        if not game_id:
+            messagebox.showwarning("No game selected", "Please choose a game first.")
+            return
+        label = self.scene_label_var.get().strip()
+        if not label:
+            messagebox.showwarning("Missing label", "Please input a scene label before capture.")
+            return
+        frame = ScreenCapture().grab()
+        if frame is None:
+            messagebox.showerror("Capture failed", "Unable to capture current screen.")
+            return
+        db = Database(self.base_config.db_path)
+        db.init_schema()
+        manager = SceneKeyframeManager(
+            db=db,
+            keyframe_dir=self.base_config.scene_keyframe_dir,
+            hash_size=self.base_config.scene_hash_size,
+            default_distance_threshold=self.base_config.scene_match_distance_threshold,
+        )
+        try:
+            record = manager.add_from_image(
+                game_id=game_id,
+                label=label,
+                image=frame.image,
+                action_text=self.scene_action_var.get().strip(),
+            )
+        finally:
+            db.close()
+        self._enqueue_log(
+            f"Captured scene keyframe: label={record['label']} threshold={record['distance_threshold']} path={record['image_path']}"
+        )
+        messagebox.showinfo("Keyframe saved", f"Scene keyframe '{record['label']}' saved.")
+
+    def list_scene_keyframes(self) -> None:
+        game_id = self._current_game_id()
+        if not game_id:
+            messagebox.showwarning("No game selected", "Please choose a game first.")
+            return
+        db = Database(self.base_config.db_path)
+        db.init_schema()
+        manager = SceneKeyframeManager(
+            db=db,
+            keyframe_dir=self.base_config.scene_keyframe_dir,
+            hash_size=self.base_config.scene_hash_size,
+            default_distance_threshold=self.base_config.scene_match_distance_threshold,
+        )
+        records = manager.list_for_game(game_id)
+        db.close()
+        if not records:
+            messagebox.showinfo("Scene Keyframes", "No scene keyframes found for this game.")
+            return
+        lines = []
+        for item in records:
+            lines.append(f"[{item['keyframe_id']}] {item['label']} (threshold={item['distance_threshold']})")
+        messagebox.showinfo("Scene Keyframes", "\n".join(lines))
+
+    def _current_game_id(self) -> str | None:
+        return resolve_game_id(
+            display_name=self.selected_game_var.get(),
+            lookup=self._display_to_id,
+            manual_game_id=self.manual_game_id_var.get(),
+        )
 
     def apply_voice_volume(self) -> None:
         volume = clamp_volume(self.voice_volume_var.get() / 100.0)

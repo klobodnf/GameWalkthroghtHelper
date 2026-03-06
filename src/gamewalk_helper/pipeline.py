@@ -9,12 +9,13 @@ from .config import AppConfig
 from .db import Database
 from .guides.fetcher import GuideFetcher, parse_source_domains
 from .hotkeys import HotkeyManager
-from .models import Observation, ProgressDecision
+from .models import GuideStepCandidate, Observation, ProgressDecision, StateScore
 from .perception.cv import CvMatcher
 from .perception.ocr import OcrEngine
 from .perception.roi import TaskRoiLocator
 from .progress import ProgressEngine
 from .runtime_control import ControlSnapshot, RuntimeControl
+from .scene import SceneMatch, SceneProgressMatcher
 from .ui.overlay import OverlayStatus, OverlayWindow
 from .voice import VoiceCoach
 
@@ -52,6 +53,11 @@ class GuideAssistantApp:
             strong_threshold=config.confidence_strong_threshold,
             margin_threshold=config.confidence_margin_threshold,
             max_suggestions=config.max_suggestions,
+        )
+        self.scene_matcher = SceneProgressMatcher(
+            db=self.db,
+            hash_size=config.scene_hash_size,
+            default_distance_threshold=config.scene_match_distance_threshold,
         )
         self.voice = VoiceCoach(
             self.db,
@@ -106,12 +112,21 @@ class GuideAssistantApp:
         )
         observation_id = self.db.add_observation(observation)
         previous_state = self.db.get_last_progress_state(self.session_id)
-        candidates = self.fetcher.get_candidate_steps(game_id=game_id, task_text=observation.task_text)
-        decision = self.progress.evaluate(
-            observation=observation,
-            candidates=candidates,
-            previous_state_id=previous_state,
-        )
+        task_text = observation.task_text.strip()
+
+        scene_match = self._maybe_match_scene(game_id=game_id, task_text=task_text, image=frame.image)
+        candidates = self.fetcher.get_candidate_steps(game_id=game_id, task_text=task_text) if task_text else []
+        if scene_match is not None:
+            candidates.insert(0, _scene_candidate(scene_match))
+
+        if scene_match is not None and not task_text:
+            decision = self._build_scene_decision(scene_match=scene_match, previous_state=previous_state)
+        else:
+            decision = self.progress.evaluate(
+                observation=observation,
+                candidates=candidates,
+                previous_state_id=previous_state,
+            )
         next_action = _format_hint_text(decision, detail_level=detail_level)
         state_id = decision.primary.candidate.state_id if decision.primary else None
         confidence = decision.primary.total if decision.primary else 0.0
@@ -242,6 +257,31 @@ class GuideAssistantApp:
             )
         )
 
+    def _maybe_match_scene(self, game_id: str, task_text: str, image) -> SceneMatch | None:
+        if not self.config.scene_match_enabled:
+            return None
+        if self.config.scene_match_when_no_task and task_text:
+            return None
+        return self.scene_matcher.match(game_id=game_id, image=image)
+
+    def _build_scene_decision(self, scene_match: SceneMatch, previous_state: str | None) -> ProgressDecision:
+        candidate = _scene_candidate(scene_match)
+        temporal = 1.0 if previous_state == candidate.state_id else 0.5
+        total = min(0.95, scene_match.confidence * 0.85 + temporal * 0.15)
+        definitive = total >= self.config.scene_confidence_threshold
+        return ProgressDecision(
+            definitive=definitive,
+            primary=StateScore(
+                candidate=candidate,
+                total=round(total, 4),
+                text_match=0.0,
+                cv_match=0.0,
+                temporal=temporal,
+                history_prior=scene_match.confidence,
+            ),
+            alternatives=[],
+        )
+
 
 def _format_hint_text(decision: ProgressDecision, detail_level: int) -> str:
     if decision.primary is None:
@@ -266,3 +306,15 @@ def _format_hint_text(decision: ProgressDecision, detail_level: int) -> str:
     if detail_level == 1:
         return f"候选步骤：{joined}"
     return f"当前不够确定，候选步骤：{joined}。建议按任务面板再确认一次。"
+
+
+def _scene_candidate(scene_match: SceneMatch) -> GuideStepCandidate:
+    return GuideStepCandidate(
+        state_id=scene_match.state_id,
+        action_text=scene_match.hint_text,
+        text_keywords=[],
+        cv_keywords=[],
+        history_prior=scene_match.confidence,
+        priority=85,
+        source_url=f"scene://{scene_match.label}",
+    )

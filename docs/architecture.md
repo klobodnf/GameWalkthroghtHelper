@@ -12,6 +12,7 @@
 8. Desktop GUI (Tkinter) provides Steam game selection and start/stop orchestration.
 9. Voice coach supports app-level volume control for TTS playback.
 10. Guide retriever supports preferred source domains with fallback to general search.
+11. Scene keyframe matcher enables progress hints even when mission text is absent.
 
 ## Design rules
 

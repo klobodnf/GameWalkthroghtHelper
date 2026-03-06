@@ -17,6 +17,7 @@
 - 应用内语音音量调节（独立 TTS 音量控制）。
 - 可插拔攻略检索（在线获取 + 本地缓存）。
 - 悬浮提示窗与全局热键控制（静音/暂停/强制刷新）。
+- 无任务文本场景关键帧模式（通过画面里程碑匹配推断进度）。
 
 ## 快速开始
 
@@ -96,6 +97,29 @@ gwh steam-select --config config/default.yaml --id-only
 guide_source_domains: "gamersky.com,3dmgame.com,steamcommunity.com"
 guide_per_source_limit: 2
 guide_max_candidates: 8
+```
+
+## 无任务场景模式
+
+当游戏里没有任务文本时，可用场景关键帧：
+
+- GUI：填写 `Label` 和可选 `Action Hint`，点击 `Capture Current Screen`。
+- CLI 抓当前屏幕保存关键帧：
+
+```powershell
+gwh scene-add-keyframe --config config/default.yaml --game-id steam_214490 --label "castle_gate" --action-text "与门卫对话"
+```
+
+- CLI 从已有截图导入：
+
+```powershell
+gwh scene-add-keyframe --config config/default.yaml --game-id steam_214490 --label "boss_room" --image-path "D:\shots\boss.png" --action-text "击败 Boss"
+```
+
+- 查看该游戏关键帧：
+
+```powershell
+gwh scene-list-keyframes --config config/default.yaml --game-id steam_214490
 ```
 
 ## 项目结构

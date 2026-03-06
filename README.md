@@ -17,6 +17,7 @@ A Windows-first, non-invasive walkthrough assistant that observes game progress 
 - App-level voice volume control (independent in-app TTS level).
 - Pluggable guide retrieval (online fetch + local cache).
 - Floating overlay and global hotkeys (mute/pause/force refresh).
+- No-task mode scene keyframes (capture visual milestones and infer progress from scene match).
 
 ## Quick Start
 
@@ -96,6 +97,29 @@ You can change source priority in `config/default.yaml`:
 guide_source_domains: "gamersky.com,3dmgame.com,steamcommunity.com"
 guide_per_source_limit: 2
 guide_max_candidates: 8
+```
+
+## No-Task Scene Mode
+
+When in-game mission text is missing, you can use scene keyframes:
+
+- GUI: set `Label` + optional `Action Hint`, then click `Capture Current Screen`.
+- CLI capture current screen:
+
+```powershell
+gwh scene-add-keyframe --config config/default.yaml --game-id steam_214490 --label "castle_gate" --action-text "Talk to the gate guard"
+```
+
+- CLI import from an existing screenshot:
+
+```powershell
+gwh scene-add-keyframe --config config/default.yaml --game-id steam_214490 --label "boss_room" --image-path "D:\shots\boss.png" --action-text "Defeat the boss"
+```
+
+- List keyframes:
+
+```powershell
+gwh scene-list-keyframes --config config/default.yaml --game-id steam_214490
 ```
 
 ## Project Layout

@@ -8,6 +8,7 @@ from .gui import launch_gui
 from .hotkeys import HotkeyManager
 from .pipeline import GuideAssistantApp
 from .runtime_control import RuntimeControl
+from .scene import SceneKeyframeManager
 from .steam import interactive_select_game, scan_installed_games
 from .ui.overlay import OverlayWindow
 
@@ -39,6 +40,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     gui = sub.add_parser("gui", help="Launch desktop GUI")
     gui.add_argument("--config", default="config/default.yaml", help="Path to config file")
+
+    scene_add = sub.add_parser("scene-add-keyframe", help="Capture or import a scene keyframe for no-task mode")
+    scene_add.add_argument("--config", default="config/default.yaml", help="Path to config file")
+    scene_add.add_argument("--game-id", required=True, help="Logical game identifier")
+    scene_add.add_argument("--label", required=True, help="Scene label (e.g., castle_gate)")
+    scene_add.add_argument("--action-text", default="", help="Suggested action when this scene is matched")
+    scene_add.add_argument("--threshold", type=int, default=None, help="Optional hamming distance threshold")
+    scene_add.add_argument("--image-path", default="", help="Optional local image path. If empty, capture current screen.")
+
+    scene_list = sub.add_parser("scene-list-keyframes", help="List scene keyframes for a game")
+    scene_list.add_argument("--config", default="config/default.yaml", help="Path to config file")
+    scene_list.add_argument("--game-id", required=True, help="Logical game identifier")
 
     return parser
 
@@ -150,6 +163,78 @@ def cmd_gui(config_path: str) -> int:
     return launch_gui(config_path=config_path)
 
 
+def cmd_scene_add_keyframe(
+    config_path: str,
+    game_id: str,
+    label: str,
+    action_text: str,
+    threshold: int | None,
+    image_path: str,
+) -> int:
+    from .capture.screen import ScreenCapture
+
+    config = load_config(config_path)
+    db = Database(config.db_path)
+    db.init_schema()
+    manager = SceneKeyframeManager(
+        db=db,
+        keyframe_dir=config.scene_keyframe_dir,
+        hash_size=config.scene_hash_size,
+        default_distance_threshold=config.scene_match_distance_threshold,
+    )
+    try:
+        if image_path.strip():
+            record = manager.add_from_path(
+                game_id=game_id,
+                label=label,
+                image_path=image_path.strip(),
+                action_text=action_text,
+                distance_threshold=threshold,
+            )
+        else:
+            frame = ScreenCapture().grab()
+            if frame is None:
+                print("Unable to capture current screen. Please provide --image-path.")
+                return 1
+            record = manager.add_from_image(
+                game_id=game_id,
+                label=label,
+                image=frame.image,
+                action_text=action_text,
+                distance_threshold=threshold,
+            )
+        print(
+            f"Added scene keyframe: game_id={record['game_id']} label={record['label']} "
+            f"threshold={record['distance_threshold']} path={record['image_path']}"
+        )
+        return 0
+    finally:
+        db.close()
+
+
+def cmd_scene_list_keyframes(config_path: str, game_id: str) -> int:
+    config = load_config(config_path)
+    db = Database(config.db_path)
+    db.init_schema()
+    manager = SceneKeyframeManager(
+        db=db,
+        keyframe_dir=config.scene_keyframe_dir,
+        hash_size=config.scene_hash_size,
+        default_distance_threshold=config.scene_match_distance_threshold,
+    )
+    records = manager.list_for_game(game_id)
+    db.close()
+    if not records:
+        print("No scene keyframes found.")
+        return 0
+    for item in records:
+        print(
+            f"- id={item['keyframe_id']} label={item['label']} "
+            f"threshold={item['distance_threshold']} action={item['action_text']} path={item['image_path']}"
+        )
+    return 0
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
@@ -166,6 +251,17 @@ def main() -> int:
         return cmd_steam_select(args.config, args.id_only)
     if command == "gui":
         return cmd_gui(args.config)
+    if command == "scene-add-keyframe":
+        return cmd_scene_add_keyframe(
+            config_path=args.config,
+            game_id=args.game_id,
+            label=args.label,
+            action_text=args.action_text,
+            threshold=args.threshold,
+            image_path=args.image_path,
+        )
+    if command == "scene-list-keyframes":
+        return cmd_scene_list_keyframes(args.config, args.game_id)
     parser.print_help()
     return 1
 

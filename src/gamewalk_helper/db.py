@@ -127,6 +127,23 @@ class Database:
 
             CREATE INDEX IF NOT EXISTS idx_steam_apps_name
               ON steam_apps(name);
+
+            CREATE TABLE IF NOT EXISTS scene_keyframes (
+              keyframe_id INTEGER PRIMARY KEY AUTOINCREMENT,
+              game_id TEXT NOT NULL,
+              label TEXT NOT NULL,
+              image_path TEXT NOT NULL,
+              ahash TEXT NOT NULL,
+              hash_size INTEGER NOT NULL,
+              distance_threshold INTEGER NOT NULL,
+              action_text TEXT,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(game_id, label)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_scene_keyframes_game
+              ON scene_keyframes(game_id);
             """
         )
         self._conn.commit()
@@ -312,6 +329,81 @@ class Database:
                 ),
             )
         self._conn.commit()
+
+    def upsert_scene_keyframe(
+        self,
+        game_id: str,
+        label: str,
+        image_path: str,
+        ahash: str,
+        hash_size: int,
+        distance_threshold: int,
+        action_text: str = "",
+    ) -> int:
+        now = _utc_now().isoformat()
+        self._conn.execute(
+            """
+            INSERT INTO scene_keyframes(
+              game_id, label, image_path, ahash, hash_size, distance_threshold, action_text, created_at, updated_at
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(game_id, label) DO UPDATE SET
+              image_path=excluded.image_path,
+              ahash=excluded.ahash,
+              hash_size=excluded.hash_size,
+              distance_threshold=excluded.distance_threshold,
+              action_text=excluded.action_text,
+              updated_at=excluded.updated_at
+            """,
+            (
+                game_id,
+                label,
+                image_path,
+                ahash,
+                hash_size,
+                distance_threshold,
+                action_text,
+                now,
+                now,
+            ),
+        )
+        row = self._conn.execute(
+            """
+            SELECT keyframe_id FROM scene_keyframes
+            WHERE game_id=? AND label=?
+            """,
+            (game_id, label),
+        ).fetchone()
+        self._conn.commit()
+        return int(row["keyframe_id"]) if row else 0
+
+    def get_scene_keyframes(self, game_id: str) -> list[dict[str, str | int]]:
+        rows = self._conn.execute(
+            """
+            SELECT keyframe_id, game_id, label, image_path, ahash, hash_size, distance_threshold, action_text, created_at, updated_at
+            FROM scene_keyframes
+            WHERE game_id=?
+            ORDER BY label COLLATE NOCASE ASC
+            """,
+            (game_id,),
+        ).fetchall()
+        result: list[dict[str, str | int]] = []
+        for row in rows:
+            result.append(
+                {
+                    "keyframe_id": int(row["keyframe_id"]),
+                    "game_id": str(row["game_id"]),
+                    "label": str(row["label"]),
+                    "image_path": str(row["image_path"]),
+                    "ahash": str(row["ahash"]),
+                    "hash_size": int(row["hash_size"]),
+                    "distance_threshold": int(row["distance_threshold"]),
+                    "action_text": str(row["action_text"] or ""),
+                    "created_at": str(row["created_at"]),
+                    "updated_at": str(row["updated_at"]),
+                }
+            )
+        return result
 
 
 def _utc_now() -> datetime:
