@@ -35,6 +35,7 @@ start_helper.bat
 - 选择后即可一键启动辅助流程，
 - 可在 GUI 里通过 `Voice Volume` 滑条和 `Apply` 按钮调节语音大小。
 - 可在 GUI 中通过 `Enable AI Advisor` 开关控制 AI 提示改写。
+- 可在 GUI 中通过 `AI Provider` 下拉框选择 AI 提供商。
 
 也可以直接命令行打开 GUI：
 
@@ -127,33 +128,65 @@ gwh scene-list-keyframes --config config/default.yaml --game-id steam_214490
 
 ## AI 提示增强（可选）
 
-每个识别周期可抓取多帧并做时序稳定，再通过 OpenAI 兼容接口改写最终提示语。
+每个识别周期可抓取多帧并做时序稳定，再通过多种 API 提供商改写最终提示语。
 
-PowerShell 设置 API Key：
+内置支持（预设配置）：
+- `openai`
+- `kimi`（Moonshot）
+- `deepseek`
+- `qwen`（DashScope 兼容接口）
+- `zhipu`（GLM）
+- `anthropic`（Claude Messages API）
+- `gemini`（Google Generative Language API）
+- `openrouter`
+- `xai`
+- `ollama`（本地模型，不需要 API Key）
 
-```powershell
-$env:OPENAI_API_KEY = "your_api_key"
-```
-
-关键配置（`config/default.yaml`）：
+核心配置（`config/default.yaml`）：
 
 ```yaml
 capture_batch_size: 3
 capture_batch_interval_seconds: 0.25
 stabilizer_enabled: true
 ai_advisor_enabled: true
-ai_advisor_model: gpt-4o-mini
-ai_advisor_base_url: https://api.openai.com/v1
+ai_advisor_provider: openai
+ai_advisor_protocol:
+ai_advisor_api_key_env:
+ai_advisor_model:
+ai_advisor_base_url:
+ai_advisor_request_path:
+ai_advisor_temperature: 0.2
 ```
 
-Kimi（Moonshot）可通过环境变量快速切换（不把 Key 写入代码）：
+通过环境变量快速切换（不把 Key 写入代码）：
 
 ```powershell
+# Kimi
 setx KIMI_API_KEY "your_kimi_key"
+setx GWH_AI_ADVISOR_PROVIDER "kimi"
 setx GWH_AI_ADVISOR_API_KEY_ENV "KIMI_API_KEY"
-setx GWH_AI_ADVISOR_BASE_URL "https://api.moonshot.cn/v1"
-setx GWH_AI_ADVISOR_MODEL "moonshot-v1-8k"
+
+# DeepSeek
+setx DEEPSEEK_API_KEY "your_deepseek_key"
+setx GWH_AI_ADVISOR_PROVIDER "deepseek"
+setx GWH_AI_ADVISOR_API_KEY_ENV "DEEPSEEK_API_KEY"
+
+# Anthropic
+setx ANTHROPIC_API_KEY "your_anthropic_key"
+setx GWH_AI_ADVISOR_PROVIDER "anthropic"
+setx GWH_AI_ADVISOR_API_KEY_ENV "ANTHROPIC_API_KEY"
+
+# Gemini
+setx GOOGLE_API_KEY "your_google_key"
+setx GWH_AI_ADVISOR_PROVIDER "gemini"
+setx GWH_AI_ADVISOR_API_KEY_ENV "GOOGLE_API_KEY"
 ```
+
+如果是自定义 OpenAI 兼容网关，可设置：
+- `GWH_AI_ADVISOR_PROVIDER=openai`
+- `GWH_AI_ADVISOR_BASE_URL=<你的接口地址>`
+- `GWH_AI_ADVISOR_MODEL=<你的模型名>`
+- `GWH_AI_ADVISOR_API_KEY_ENV=<你的Key环境变量名>`
 
 ## 数据库与缓存
 

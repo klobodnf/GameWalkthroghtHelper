@@ -9,9 +9,13 @@ stabilizer_enabled: true
 stabilizer_window_size: 6
 stabilizer_stable_hits: 3
 ai_advisor_enabled: true
-ai_advisor_api_key_env: OPENAI_API_KEY
-ai_advisor_model: gpt-4o-mini
-ai_advisor_base_url: https://api.openai.com/v1
+ai_advisor_provider: openai
+ai_advisor_protocol:
+ai_advisor_api_key_env:
+ai_advisor_model:
+ai_advisor_base_url:
+ai_advisor_request_path:
+ai_advisor_temperature: 0.2
 ai_advisor_timeout_seconds: 15
 ai_advisor_max_tokens: 120
 ai_advisor_cooldown_seconds: 45

@@ -20,9 +20,13 @@ class AppConfig:
     stabilizer_window_size: int = 6
     stabilizer_stable_hits: int = 3
     ai_advisor_enabled: bool = True
-    ai_advisor_api_key_env: str = "OPENAI_API_KEY"
-    ai_advisor_model: str = "gpt-4o-mini"
-    ai_advisor_base_url: str = "https://api.openai.com/v1"
+    ai_advisor_provider: str = "openai"
+    ai_advisor_protocol: str = ""
+    ai_advisor_api_key_env: str = ""
+    ai_advisor_model: str = ""
+    ai_advisor_base_url: str = ""
+    ai_advisor_request_path: str = ""
+    ai_advisor_temperature: float = 0.2
     ai_advisor_timeout_seconds: int = 15
     ai_advisor_max_tokens: int = 120
     ai_advisor_cooldown_seconds: int = 45
@@ -75,9 +79,13 @@ def load_config(path: str | None) -> AppConfig:
 def _apply_env_overrides(config: AppConfig) -> None:
     overrides: dict[str, tuple[str, type]] = {
         "ai_advisor_enabled": ("GWH_AI_ADVISOR_ENABLED", bool),
+        "ai_advisor_provider": ("GWH_AI_ADVISOR_PROVIDER", str),
+        "ai_advisor_protocol": ("GWH_AI_ADVISOR_PROTOCOL", str),
         "ai_advisor_api_key_env": ("GWH_AI_ADVISOR_API_KEY_ENV", str),
         "ai_advisor_model": ("GWH_AI_ADVISOR_MODEL", str),
         "ai_advisor_base_url": ("GWH_AI_ADVISOR_BASE_URL", str),
+        "ai_advisor_request_path": ("GWH_AI_ADVISOR_REQUEST_PATH", str),
+        "ai_advisor_temperature": ("GWH_AI_ADVISOR_TEMPERATURE", float),
         "ai_advisor_timeout_seconds": ("GWH_AI_ADVISOR_TIMEOUT_SECONDS", int),
         "ai_advisor_max_tokens": ("GWH_AI_ADVISOR_MAX_TOKENS", int),
         "ai_advisor_cooldown_seconds": ("GWH_AI_ADVISOR_COOLDOWN_SECONDS", int),
@@ -134,6 +142,8 @@ def _load_yaml_like(raw: str) -> dict[str, Any]:
 
 
 def _coerce_scalar(value: str) -> Any:
+    if len(value) >= 2 and ((value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'"))):
+        value = value[1:-1]
     lowered = value.lower()
     if lowered in {"null", "none"}:
         return None

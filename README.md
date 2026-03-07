@@ -35,6 +35,7 @@ Default behavior:
 - start the selected game profile in one click.
 - adjust voice volume in GUI (`Voice Volume` slider + `Apply` button).
 - toggle AI hint rewriting in GUI (`Enable AI Advisor`).
+- choose AI provider in GUI (`AI Provider` dropdown).
 
 You can also launch GUI directly:
 
@@ -127,33 +128,65 @@ gwh scene-list-keyframes --config config/default.yaml --game-id steam_214490
 
 ## AI Advisor (Optional)
 
-The app can sample multiple frames each tick, stabilize state votes over time, then optionally rewrite the final hint through an OpenAI-compatible endpoint.
+The app samples multiple frames each tick, stabilizes state votes over time, and can rewrite the final hint with multiple API providers.
 
-Set API key (PowerShell):
+Supported providers (preset config):
+- `openai`
+- `kimi` (Moonshot)
+- `deepseek`
+- `qwen` (DashScope compatible endpoint)
+- `zhipu` (GLM)
+- `anthropic` (Claude Messages API)
+- `gemini` (Google Generative Language API)
+- `openrouter`
+- `xai`
+- `ollama` (local, no API key required)
 
-```powershell
-$env:OPENAI_API_KEY = "your_api_key"
-```
-
-Key config options (`config/default.yaml`):
+Core config keys (`config/default.yaml`):
 
 ```yaml
 capture_batch_size: 3
 capture_batch_interval_seconds: 0.25
 stabilizer_enabled: true
 ai_advisor_enabled: true
-ai_advisor_model: gpt-4o-mini
-ai_advisor_base_url: https://api.openai.com/v1
+ai_advisor_provider: openai
+ai_advisor_protocol:
+ai_advisor_api_key_env:
+ai_advisor_model:
+ai_advisor_base_url:
+ai_advisor_request_path:
+ai_advisor_temperature: 0.2
 ```
 
-Kimi (Moonshot) quick switch via environment variables (no code key storage):
+Provider quick switch via env vars (no key in code):
 
 ```powershell
+# Kimi
 setx KIMI_API_KEY "your_kimi_key"
+setx GWH_AI_ADVISOR_PROVIDER "kimi"
 setx GWH_AI_ADVISOR_API_KEY_ENV "KIMI_API_KEY"
-setx GWH_AI_ADVISOR_BASE_URL "https://api.moonshot.cn/v1"
-setx GWH_AI_ADVISOR_MODEL "moonshot-v1-8k"
+
+# DeepSeek
+setx DEEPSEEK_API_KEY "your_deepseek_key"
+setx GWH_AI_ADVISOR_PROVIDER "deepseek"
+setx GWH_AI_ADVISOR_API_KEY_ENV "DEEPSEEK_API_KEY"
+
+# Anthropic
+setx ANTHROPIC_API_KEY "your_anthropic_key"
+setx GWH_AI_ADVISOR_PROVIDER "anthropic"
+setx GWH_AI_ADVISOR_API_KEY_ENV "ANTHROPIC_API_KEY"
+
+# Gemini
+setx GOOGLE_API_KEY "your_google_key"
+setx GWH_AI_ADVISOR_PROVIDER "gemini"
+setx GWH_AI_ADVISOR_API_KEY_ENV "GOOGLE_API_KEY"
 ```
+
+For custom OpenAI-compatible gateways, set:
+- `GWH_AI_ADVISOR_PROVIDER=openai`
+- `GWH_AI_ADVISOR_BASE_URL=<your_base_url>`
+- `GWH_AI_ADVISOR_MODEL=<your_model>`
+- `GWH_AI_ADVISOR_API_KEY_ENV=<your_key_env_name>`
 
 ## Database & Cache
 

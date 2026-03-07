@@ -84,9 +84,13 @@ class GuideAssistantApp:
         )
         self.ai_advisor = AIHintAdvisor(
             enabled=config.ai_advisor_enabled,
+            provider=config.ai_advisor_provider,
+            protocol=config.ai_advisor_protocol,
             api_key_env=config.ai_advisor_api_key_env,
             model=config.ai_advisor_model,
             base_url=config.ai_advisor_base_url,
+            request_path=config.ai_advisor_request_path,
+            temperature=config.ai_advisor_temperature,
             timeout_seconds=config.ai_advisor_timeout_seconds,
             max_tokens=config.ai_advisor_max_tokens,
             cooldown_seconds=config.ai_advisor_cooldown_seconds,
