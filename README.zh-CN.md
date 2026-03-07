@@ -18,6 +18,8 @@
 - 可插拔攻略检索（在线获取 + 本地缓存）。
 - 悬浮提示窗与全局热键控制（静音/暂停/强制刷新）。
 - 无任务文本场景关键帧模式（通过画面里程碑匹配推断进度）。
+- 多帧采样 + 时序稳定器，降低提示抖动。
+- 可选 AI 提示改写（基于当前进度上下文输出下一步）。
 
 ## 快速开始
 
@@ -32,6 +34,7 @@ start_helper.bat
 - 在 GUI 中列出已安装游戏，
 - 选择后即可一键启动辅助流程，
 - 可在 GUI 里通过 `Voice Volume` 滑条和 `Apply` 按钮调节语音大小。
+- 可在 GUI 中通过 `Enable AI Advisor` 开关控制 AI 提示改写。
 
 也可以直接命令行打开 GUI：
 
@@ -120,6 +123,27 @@ gwh scene-add-keyframe --config config/default.yaml --game-id steam_214490 --lab
 
 ```powershell
 gwh scene-list-keyframes --config config/default.yaml --game-id steam_214490
+```
+
+## AI 提示增强（可选）
+
+每个识别周期可抓取多帧并做时序稳定，再通过 OpenAI 兼容接口改写最终提示语。
+
+PowerShell 设置 API Key：
+
+```powershell
+$env:OPENAI_API_KEY = "your_api_key"
+```
+
+关键配置（`config/default.yaml`）：
+
+```yaml
+capture_batch_size: 3
+capture_batch_interval_seconds: 0.25
+stabilizer_enabled: true
+ai_advisor_enabled: true
+ai_advisor_model: gpt-4o-mini
+ai_advisor_base_url: https://api.openai.com/v1
 ```
 
 ## 项目结构

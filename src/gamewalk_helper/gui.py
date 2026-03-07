@@ -26,6 +26,7 @@ class GuiRunOptions:
     run_mode: str
     overlay_enabled: bool
     hotkeys_enabled: bool
+    ai_advisor_enabled: bool
     voice_volume: float
 
 
@@ -66,6 +67,7 @@ class GuideDesktopApp:
         self.mode_var = StringVar(value="loop")
         self.overlay_var = StringVar(value="1" if self.base_config.overlay_enabled else "0")
         self.hotkeys_var = StringVar(value="1" if self.base_config.hotkeys_enabled else "0")
+        self.ai_advisor_var = StringVar(value="1" if self.base_config.ai_advisor_enabled else "0")
         initial_volume = clamp_volume(self.base_config.voice_volume)
         self.voice_volume_var = DoubleVar(value=round(initial_volume * 100, 0))
         self.voice_volume_label_var = StringVar(value=self._format_volume_percent(initial_volume))
@@ -133,6 +135,7 @@ class GuideDesktopApp:
         toggle_bar.pack(fill="x")
         ttk.Checkbutton(toggle_bar, text="Enable Overlay", variable=self.overlay_var, onvalue="1", offvalue="0").pack(side=LEFT)
         ttk.Checkbutton(toggle_bar, text="Enable Global Hotkeys", variable=self.hotkeys_var, onvalue="1", offvalue="0").pack(side=LEFT, padx=(10, 0))
+        ttk.Checkbutton(toggle_bar, text="Enable AI Advisor", variable=self.ai_advisor_var, onvalue="1", offvalue="0").pack(side=LEFT, padx=(10, 0))
 
         voice_bar = ttk.Frame(options)
         voice_bar.pack(fill="x", pady=(8, 0))
@@ -201,7 +204,7 @@ class GuideDesktopApp:
 
         self._set_running_state(True)
         self._enqueue_log(
-            f"Starting mode={options.run_mode}, game_id={options.game_id}, overlay={options.overlay_enabled}, hotkeys={options.hotkeys_enabled}, voice_volume={options.voice_volume:.2f}"
+            f"Starting mode={options.run_mode}, game_id={options.game_id}, overlay={options.overlay_enabled}, hotkeys={options.hotkeys_enabled}, ai={options.ai_advisor_enabled}, voice_volume={options.voice_volume:.2f}"
         )
         self._worker = Thread(target=self._run_worker, args=(options,), name="gwh-gui-worker", daemon=True)
         self._worker.start()
@@ -217,6 +220,7 @@ class GuideDesktopApp:
             config = load_config(self.config_path)
             config.overlay_enabled = options.overlay_enabled
             config.hotkeys_enabled = options.hotkeys_enabled
+            config.ai_advisor_enabled = options.ai_advisor_enabled
             config.voice_volume = options.voice_volume
             app = GuideAssistantApp(config)
             self._active_app = app
@@ -261,6 +265,7 @@ class GuideDesktopApp:
             run_mode=self.mode_var.get().strip().lower(),
             overlay_enabled=self.overlay_var.get() == "1",
             hotkeys_enabled=self.hotkeys_var.get() == "1",
+            ai_advisor_enabled=self.ai_advisor_var.get() == "1",
             voice_volume=clamp_volume(self.voice_volume_var.get() / 100.0),
         )
 

@@ -3,8 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import sleep
+from typing import Any
 
-from .capture.screen import ScreenCapture
+from .ai_advisor import AIHintAdvisor, AdvisorContext
+from .capture.screen import ScreenCapture, ScreenFrame
 from .config import AppConfig
 from .db import Database
 from .guides.fetcher import GuideFetcher, parse_source_domains
@@ -16,6 +18,7 @@ from .perception.roi import TaskRoiLocator
 from .progress import ProgressEngine
 from .runtime_control import ControlSnapshot, RuntimeControl
 from .scene import SceneMatch, SceneProgressMatcher
+from .stabilizer import ProgressStabilizer
 from .ui.overlay import OverlayStatus, OverlayWindow
 from .voice import VoiceCoach
 
@@ -26,6 +29,18 @@ class TickResult:
     observation: Observation | None
     hint_text: str = ""
     spoken: bool = False
+    confidence: float = 0.0
+    definitive: bool = False
+    state_id: str | None = None
+
+
+@dataclass(slots=True)
+class _FrameSignal:
+    frame: ScreenFrame
+    task_text: str
+    task_confidence: float
+    roi: str
+    cv_labels: list[str]
 
 
 class GuideAssistantApp:
@@ -59,6 +74,23 @@ class GuideAssistantApp:
             hash_size=config.scene_hash_size,
             default_distance_threshold=config.scene_match_distance_threshold,
         )
+        self.stabilizer = (
+            ProgressStabilizer(
+                window_size=config.stabilizer_window_size,
+                stable_hits=config.stabilizer_stable_hits,
+            )
+            if config.stabilizer_enabled
+            else None
+        )
+        self.ai_advisor = AIHintAdvisor(
+            enabled=config.ai_advisor_enabled,
+            api_key_env=config.ai_advisor_api_key_env,
+            model=config.ai_advisor_model,
+            base_url=config.ai_advisor_base_url,
+            timeout_seconds=config.ai_advisor_timeout_seconds,
+            max_tokens=config.ai_advisor_max_tokens,
+            cooldown_seconds=config.ai_advisor_cooldown_seconds,
+        )
         self.voice = VoiceCoach(
             self.db,
             cooldown_seconds=config.voice_cooldown_seconds,
@@ -89,32 +121,20 @@ class GuideAssistantApp:
             self.start_session(game_id)
         assert self.session_id is not None
 
-        frame = self.capture.grab()
-        if frame is None:
+        frames = self._grab_frame_batch()
+        if not frames:
             return TickResult(
                 decision=ProgressDecision(definitive=False, primary=None, alternatives=[]),
                 observation=None,
                 hint_text="未获取到屏幕帧。",
             )
 
-        roi_selection = self.roi_locator.locate(frame.image, self.ocr)
-        ocr_result = roi_selection.ocr_result
-        cv_labels = self.cv.match_labels(frame.image)
-        observation = Observation(
-            game_id=game_id,
-            session_id=self.session_id,
-            timestamp=datetime.now(timezone.utc),
-            task_text=ocr_result.text,
-            task_confidence=ocr_result.confidence,
-            cv_labels=cv_labels,
-            frame_hash=frame.hash_value,
-            roi=roi_selection.roi.as_text(),
-        )
+        observation, scene_images = self._build_observation(game_id=game_id, frames=frames)
         observation_id = self.db.add_observation(observation)
         previous_state = self.db.get_last_progress_state(self.session_id)
         task_text = observation.task_text.strip()
 
-        scene_match = self._maybe_match_scene(game_id=game_id, task_text=task_text, image=frame.image)
+        scene_match = self._maybe_match_scene(game_id=game_id, task_text=task_text, images=scene_images)
         candidates = self.fetcher.get_candidate_steps(game_id=game_id, task_text=task_text) if task_text else []
         if scene_match is not None:
             candidates.insert(0, _scene_candidate(scene_match))
@@ -127,18 +147,48 @@ class GuideAssistantApp:
                 candidates=candidates,
                 previous_state_id=previous_state,
             )
+
         next_action = _format_hint_text(decision, detail_level=detail_level)
         state_id = decision.primary.candidate.state_id if decision.primary else None
         confidence = decision.primary.total if decision.primary else 0.0
+        definitive = decision.definitive
+
+        if self.stabilizer is not None:
+            stable = self.stabilizer.update(state_id=state_id, hint_text=next_action, confidence=confidence)
+            if stable.state_id:
+                state_id = stable.state_id
+            if stable.hint_text.strip():
+                next_action = stable.hint_text
+            confidence = max(confidence, stable.confidence)
+            definitive = definitive and stable.stable
+
+        next_action = self.ai_advisor.suggest(
+            AdvisorContext(
+                game_id=game_id,
+                base_hint=next_action,
+                task_text=task_text,
+                confidence=confidence,
+                state_id=state_id,
+                scene_label=scene_match.label if scene_match is not None else "",
+                alternatives=[
+                    item.candidate.action_text.strip()
+                    for item in decision.alternatives
+                    if item.candidate.action_text.strip()
+                ],
+            )
+        )
+
         self.db.save_progress_state(
             session_id=self.session_id,
             state_id=state_id,
             confidence=confidence,
             evidence_observation_id=observation_id,
             next_action=next_action,
-            definitive=decision.definitive,
+            definitive=definitive,
         )
-        should_voice = speak and (decision.primary is not None or force_voice)
+        should_voice = speak and (state_id is not None or force_voice)
+        if self.stabilizer is not None and not definitive and not force_voice:
+            should_voice = False
         spoken = False
         if should_voice:
             spoken = self.voice.try_speak(
@@ -146,7 +196,15 @@ class GuideAssistantApp:
                 text=next_action,
                 ignore_cooldown=force_voice,
             )
-        return TickResult(decision=decision, observation=observation, hint_text=next_action, spoken=spoken)
+        return TickResult(
+            decision=decision,
+            observation=observation,
+            hint_text=next_action,
+            spoken=spoken,
+            confidence=confidence,
+            definitive=definitive,
+            state_id=state_id,
+        )
 
     def run_loop(
         self,
@@ -205,18 +263,13 @@ class GuideAssistantApp:
                     last_task = result.observation.task_text
                     last_hint = result.hint_text
                     text = result.observation.task_text or "<empty>"
-                    confidence = 0.0
-                    definitive = False
-                    if result.decision.primary is not None:
-                        confidence = result.decision.primary.total
-                        definitive = result.decision.definitive
                     self._publish_overlay(
                         overlay=overlay,
                         game_id=game_id,
                         task_text=text,
                         hint_text=result.hint_text,
-                        confidence=confidence,
-                        definitive=definitive,
+                        confidence=result.confidence,
+                        definitive=result.definitive,
                         snapshot=snapshot,
                     )
                     print(f"[{result.observation.timestamp.isoformat()}] task={text}")
@@ -257,12 +310,63 @@ class GuideAssistantApp:
             )
         )
 
-    def _maybe_match_scene(self, game_id: str, task_text: str, image) -> SceneMatch | None:
+    def _grab_frame_batch(self) -> list[ScreenFrame]:
+        count = max(1, int(self.config.capture_batch_size))
+        interval = max(0.0, float(self.config.capture_batch_interval_seconds))
+        frames: list[ScreenFrame] = []
+        for index in range(count):
+            frame = self.capture.grab()
+            if frame is not None:
+                frames.append(frame)
+            if index < count - 1 and interval > 0:
+                sleep(interval)
+        return frames
+
+    def _build_observation(self, game_id: str, frames: list[ScreenFrame]) -> tuple[Observation, list[Any]]:
+        assert self.session_id is not None
+        signals: list[_FrameSignal] = []
+        merged_labels: set[str] = set()
+        for frame in frames:
+            roi_selection = self.roi_locator.locate(frame.image, self.ocr)
+            ocr_result = roi_selection.ocr_result
+            cv_labels = self.cv.match_labels(frame.image)
+            merged_labels.update(label for label in cv_labels if label)
+            signals.append(
+                _FrameSignal(
+                    frame=frame,
+                    task_text=ocr_result.text.strip(),
+                    task_confidence=max(0.0, min(1.0, ocr_result.confidence)),
+                    roi=roi_selection.roi.as_text(),
+                    cv_labels=cv_labels,
+                )
+            )
+
+        selected = _select_best_signal(signals)
+        observation = Observation(
+            game_id=game_id,
+            session_id=self.session_id,
+            timestamp=datetime.now(timezone.utc),
+            task_text=selected.task_text,
+            task_confidence=selected.task_confidence,
+            cv_labels=sorted(merged_labels) if merged_labels else selected.cv_labels,
+            frame_hash=selected.frame.hash_value,
+            roi=selected.roi,
+        )
+        return observation, [frame.image for frame in frames]
+
+    def _maybe_match_scene(self, game_id: str, task_text: str, images: list[Any]) -> SceneMatch | None:
         if not self.config.scene_match_enabled:
             return None
         if self.config.scene_match_when_no_task and task_text:
             return None
-        return self.scene_matcher.match(game_id=game_id, image=image)
+        best: SceneMatch | None = None
+        for image in images:
+            matched = self.scene_matcher.match(game_id=game_id, image=image)
+            if matched is None:
+                continue
+            if best is None or matched.confidence > best.confidence:
+                best = matched
+        return best
 
     def _build_scene_decision(self, scene_match: SceneMatch, previous_state: str | None) -> ProgressDecision:
         candidate = _scene_candidate(scene_match)
@@ -306,6 +410,20 @@ def _format_hint_text(decision: ProgressDecision, detail_level: int) -> str:
     if detail_level == 1:
         return f"候选步骤：{joined}"
     return f"当前不够确定，候选步骤：{joined}。建议按任务面板再确认一次。"
+
+
+def _select_best_signal(signals: list[_FrameSignal]) -> _FrameSignal:
+    if not signals:
+        raise ValueError("signals cannot be empty")
+    return max(
+        signals,
+        key=lambda item: (
+            1 if item.task_text else 0,
+            item.task_confidence,
+            len(item.task_text),
+            len(item.cv_labels),
+        ),
+    )
 
 
 def _scene_candidate(scene_match: SceneMatch) -> GuideStepCandidate:

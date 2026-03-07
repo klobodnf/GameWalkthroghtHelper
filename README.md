@@ -18,6 +18,8 @@ A Windows-first, non-invasive walkthrough assistant that observes game progress 
 - Pluggable guide retrieval (online fetch + local cache).
 - Floating overlay and global hotkeys (mute/pause/force refresh).
 - No-task mode scene keyframes (capture visual milestones and infer progress from scene match).
+- Multi-frame sampling + temporal stabilizer to reduce hint flicker.
+- Optional AI advisor that rewrites one-step hints from current progress context.
 
 ## Quick Start
 
@@ -32,6 +34,7 @@ Default behavior:
 - show installed games in a GUI selector,
 - start the selected game profile in one click.
 - adjust voice volume in GUI (`Voice Volume` slider + `Apply` button).
+- toggle AI hint rewriting in GUI (`Enable AI Advisor`).
 
 You can also launch GUI directly:
 
@@ -120,6 +123,27 @@ gwh scene-add-keyframe --config config/default.yaml --game-id steam_214490 --lab
 
 ```powershell
 gwh scene-list-keyframes --config config/default.yaml --game-id steam_214490
+```
+
+## AI Advisor (Optional)
+
+The app can sample multiple frames each tick, stabilize state votes over time, then optionally rewrite the final hint through an OpenAI-compatible endpoint.
+
+Set API key (PowerShell):
+
+```powershell
+$env:OPENAI_API_KEY = "your_api_key"
+```
+
+Key config options (`config/default.yaml`):
+
+```yaml
+capture_batch_size: 3
+capture_batch_interval_seconds: 0.25
+stabilizer_enabled: true
+ai_advisor_enabled: true
+ai_advisor_model: gpt-4o-mini
+ai_advisor_base_url: https://api.openai.com/v1
 ```
 
 ## Project Layout

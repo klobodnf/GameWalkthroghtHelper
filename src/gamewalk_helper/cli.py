@@ -72,7 +72,7 @@ def cmd_run_once(config_path: str, game_id: str) -> int:
     if result.observation is None:
         print("No frame captured; check screen capture dependencies.")
     else:
-        print(result.decision.speech_text)
+        print(result.hint_text or result.decision.speech_text)
     app.stop_session()
     app.db.close()
     return 0

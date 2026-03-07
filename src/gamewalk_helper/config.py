@@ -10,9 +10,21 @@ import json
 class AppConfig:
     db_path: str = "data/gamewalk.db"
     capture_fps: float = 1.0
+    capture_batch_size: int = 3
+    capture_batch_interval_seconds: float = 0.25
     loop_interval_seconds: float = 1.0
     voice_cooldown_seconds: int = 30
     voice_volume: float = 0.8
+    stabilizer_enabled: bool = True
+    stabilizer_window_size: int = 6
+    stabilizer_stable_hits: int = 3
+    ai_advisor_enabled: bool = True
+    ai_advisor_api_key_env: str = "OPENAI_API_KEY"
+    ai_advisor_model: str = "gpt-4o-mini"
+    ai_advisor_base_url: str = "https://api.openai.com/v1"
+    ai_advisor_timeout_seconds: int = 15
+    ai_advisor_max_tokens: int = 120
+    ai_advisor_cooldown_seconds: int = 45
     scene_match_enabled: bool = True
     scene_match_when_no_task: bool = True
     scene_hash_size: int = 16
