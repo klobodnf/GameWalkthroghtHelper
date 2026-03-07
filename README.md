@@ -15,6 +15,7 @@ A Windows-first, non-invasive walkthrough assistant that observes game progress 
 - Rule-based progress scoring with confidence and fallback suggestions.
 - Voice cooldown/dedup to avoid repetitive prompts.
 - App-level voice volume control (independent in-app TTS level).
+- Optional voice input commands (mic control for pause/mute/next-step/quit).
 - Pluggable guide retrieval (online fetch + local cache).
 - Floating overlay and global hotkeys (mute/pause/force refresh).
 - No-task mode scene keyframes (capture visual milestones and infer progress from scene match).
@@ -42,6 +43,7 @@ Default behavior:
 - adjust voice volume in GUI (`Voice Volume` slider + `Apply` button).
 - toggle AI hint rewriting in GUI (`Enable AI Advisor`).
 - choose AI provider in GUI (`AI Provider` dropdown).
+- optionally enable mic voice commands (`Enable Voice Input`) and set wake word.
 
 You can also launch GUI directly:
 
@@ -79,6 +81,13 @@ start_helper.bat cli <game_id> [once|loop]
 - `Ctrl+Alt+D`: Cycle hint detail level (L0-L2).
 - `Ctrl+Alt+Q`: Stop the loop.
 - Optional flags: `--no-overlay`, `--no-hotkeys`.
+
+Voice input (optional):
+- GUI toggle: `Enable Voice Input`
+- CLI flags: `--voice-input` / `--no-voice-input`
+- Supported commands: `静音`, `取消静音`, `暂停`, `继续`, `下一步提示`, `详细`, `退出助手`
+- If wake word is configured, command must include it (example: `assistant 暂停`)
+- Dependency note: install microphone backend when needed (`pip install SpeechRecognition pyaudio`)
 
 ## Steam Integration
 

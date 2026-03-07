@@ -15,6 +15,7 @@
 - 基于规则与置信度的进度评分与候选回退。
 - 语音播报冷却与去重，避免重复打扰。
 - 应用内语音音量调节（独立 TTS 音量控制）。
+- 可选语音输入控制（麦克风语音命令：暂停/静音/下一步/退出）。
 - 可插拔攻略检索（在线获取 + 本地缓存）。
 - 悬浮提示窗与全局热键控制（静音/暂停/强制刷新）。
 - 无任务文本场景关键帧模式（通过画面里程碑匹配推断进度）。
@@ -42,6 +43,7 @@ configure_ai_provider.bat
 - 可在 GUI 里通过 `Voice Volume` 滑条和 `Apply` 按钮调节语音大小。
 - 可在 GUI 中通过 `Enable AI Advisor` 开关控制 AI 提示改写。
 - 可在 GUI 中通过 `AI Provider` 下拉框选择 AI 提供商。
+- 可在 GUI 中启用 `Enable Voice Input` 并设置唤醒词。
 
 也可以直接命令行打开 GUI：
 
@@ -79,6 +81,13 @@ start_helper.bat cli <game_id> [once|loop]
 - `Ctrl+Alt+D`：切换提示详细级别（L0-L2）。
 - `Ctrl+Alt+Q`：停止运行。
 - 可选参数：`--no-overlay`、`--no-hotkeys`。
+
+语音输入（可选）：
+- GUI 开关：`Enable Voice Input`
+- CLI 参数：`--voice-input` / `--no-voice-input`
+- 支持命令：`静音`、`取消静音`、`暂停`、`继续`、`下一步提示`、`详细`、`退出助手`
+- 若配置了唤醒词，命令中需包含唤醒词（例如：`assistant 暂停`）
+- 依赖说明：如需麦克风输入可安装 `pip install SpeechRecognition pyaudio`
 
 ## Steam 集成
 

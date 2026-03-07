@@ -5,6 +5,12 @@ capture_batch_interval_seconds: 0.25
 loop_interval_seconds: 1.0
 voice_cooldown_seconds: 30
 voice_volume: 0.8
+voice_input_enabled: false
+voice_input_language: zh-CN
+voice_input_wake_word:
+voice_input_listen_timeout_seconds: 1.5
+voice_input_phrase_time_limit_seconds: 3.0
+voice_input_error_backoff_seconds: 3.0
 stabilizer_enabled: true
 stabilizer_window_size: 6
 stabilizer_stable_hits: 3

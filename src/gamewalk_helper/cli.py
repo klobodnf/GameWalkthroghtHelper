@@ -11,6 +11,7 @@ from .runtime_control import RuntimeControl
 from .scene import SceneKeyframeManager
 from .steam import interactive_select_game, scan_installed_games
 from .ui.overlay import OverlayWindow
+from .voice_input import VoiceCommandManager
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -29,6 +30,8 @@ def build_parser() -> argparse.ArgumentParser:
     loop.add_argument("--game-id", required=True, help="Logical game identifier")
     loop.add_argument("--no-overlay", action="store_true", help="Disable floating overlay window")
     loop.add_argument("--no-hotkeys", action="store_true", help="Disable global hotkeys")
+    loop.add_argument("--voice-input", action="store_true", help="Enable voice input commands")
+    loop.add_argument("--no-voice-input", action="store_true", help="Disable voice input commands")
 
     steam_list = sub.add_parser("steam-list", help="List installed Steam games")
     steam_list.add_argument("--config", default="config/default.yaml", help="Path to config file")
@@ -78,12 +81,24 @@ def cmd_run_once(config_path: str, game_id: str) -> int:
     return 0
 
 
-def cmd_run_loop(config_path: str, game_id: str, no_overlay: bool, no_hotkeys: bool) -> int:
+def cmd_run_loop(
+    config_path: str,
+    game_id: str,
+    no_overlay: bool,
+    no_hotkeys: bool,
+    voice_input: bool,
+    no_voice_input: bool,
+) -> int:
     config = load_config(config_path)
     app = GuideAssistantApp(config)
     control = RuntimeControl(initial_detail_level=config.default_detail_level)
     overlay_enabled = config.overlay_enabled and not no_overlay
     hotkeys_enabled = config.hotkeys_enabled and not no_hotkeys
+    voice_input_enabled = config.voice_input_enabled
+    if voice_input:
+        voice_input_enabled = True
+    if no_voice_input:
+        voice_input_enabled = False
     overlay = OverlayWindow(
         enabled=overlay_enabled,
         width=config.overlay_width,
@@ -92,7 +107,16 @@ def cmd_run_loop(config_path: str, game_id: str, no_overlay: bool, no_hotkeys: b
         pos_y=config.overlay_pos_y,
     )
     hotkeys = HotkeyManager(control=control, enabled=hotkeys_enabled)
-    app.run_loop(game_id=game_id, control=control, overlay=overlay, hotkeys=hotkeys)
+    voice_commands = VoiceCommandManager(
+        control=control,
+        enabled=voice_input_enabled,
+        language=config.voice_input_language,
+        wake_word=config.voice_input_wake_word,
+        listen_timeout_seconds=config.voice_input_listen_timeout_seconds,
+        phrase_time_limit_seconds=config.voice_input_phrase_time_limit_seconds,
+        error_backoff_seconds=config.voice_input_error_backoff_seconds,
+    )
+    app.run_loop(game_id=game_id, control=control, overlay=overlay, hotkeys=hotkeys, voice_input=voice_commands)
     return 0
 
 
@@ -244,7 +268,14 @@ def main() -> int:
     if command == "run-once":
         return cmd_run_once(args.config, args.game_id)
     if command == "run-loop":
-        return cmd_run_loop(args.config, args.game_id, args.no_overlay, args.no_hotkeys)
+        return cmd_run_loop(
+            args.config,
+            args.game_id,
+            args.no_overlay,
+            args.no_hotkeys,
+            args.voice_input,
+            args.no_voice_input,
+        )
     if command == "steam-list":
         return cmd_steam_list(args.config, args.json)
     if command == "steam-select":

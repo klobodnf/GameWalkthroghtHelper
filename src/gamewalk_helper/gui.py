@@ -19,6 +19,7 @@ from .steam import SteamGame, scan_installed_games
 from .ui.overlay import OverlayWindow
 from .voice import clamp_volume
 from .ai_advisor import list_supported_providers
+from .voice_input import VoiceCommandManager
 
 
 @dataclass(slots=True)
@@ -29,6 +30,8 @@ class GuiRunOptions:
     hotkeys_enabled: bool
     ai_advisor_enabled: bool
     ai_provider: str
+    voice_input_enabled: bool
+    voice_input_wake_word: str
     voice_volume: float
 
 
@@ -72,6 +75,8 @@ class GuideDesktopApp:
         self.ai_advisor_var = StringVar(value="1" if self.base_config.ai_advisor_enabled else "0")
         provider_default = (self.base_config.ai_advisor_provider or "openai").strip().lower()
         self.ai_provider_var = StringVar(value=provider_default)
+        self.voice_input_var = StringVar(value="1" if self.base_config.voice_input_enabled else "0")
+        self.voice_wake_word_var = StringVar(value=self.base_config.voice_input_wake_word or "")
         initial_volume = clamp_volume(self.base_config.voice_volume)
         self.voice_volume_var = DoubleVar(value=round(initial_volume * 100, 0))
         self.voice_volume_label_var = StringVar(value=self._format_volume_percent(initial_volume))
@@ -140,6 +145,7 @@ class GuideDesktopApp:
         ttk.Checkbutton(toggle_bar, text="Enable Overlay", variable=self.overlay_var, onvalue="1", offvalue="0").pack(side=LEFT)
         ttk.Checkbutton(toggle_bar, text="Enable Global Hotkeys", variable=self.hotkeys_var, onvalue="1", offvalue="0").pack(side=LEFT, padx=(10, 0))
         ttk.Checkbutton(toggle_bar, text="Enable AI Advisor", variable=self.ai_advisor_var, onvalue="1", offvalue="0").pack(side=LEFT, padx=(10, 0))
+        ttk.Checkbutton(toggle_bar, text="Enable Voice Input", variable=self.voice_input_var, onvalue="1", offvalue="0").pack(side=LEFT, padx=(10, 0))
 
         provider_bar = ttk.Frame(options)
         provider_bar.pack(fill="x", pady=(8, 0))
@@ -155,6 +161,11 @@ class GuideDesktopApp:
             values=providers,
         )
         self.provider_combo.pack(side=LEFT, padx=(10, 0))
+
+        voice_input_bar = ttk.Frame(options)
+        voice_input_bar.pack(fill="x", pady=(8, 0))
+        ttk.Label(voice_input_bar, text="Wake Word (optional)").pack(side=LEFT)
+        ttk.Entry(voice_input_bar, textvariable=self.voice_wake_word_var, width=26).pack(side=LEFT, padx=(10, 0))
 
         voice_bar = ttk.Frame(options)
         voice_bar.pack(fill="x", pady=(8, 0))
@@ -223,7 +234,7 @@ class GuideDesktopApp:
 
         self._set_running_state(True)
         self._enqueue_log(
-            f"Starting mode={options.run_mode}, game_id={options.game_id}, overlay={options.overlay_enabled}, hotkeys={options.hotkeys_enabled}, ai={options.ai_advisor_enabled}, provider={options.ai_provider}, voice_volume={options.voice_volume:.2f}"
+            f"Starting mode={options.run_mode}, game_id={options.game_id}, overlay={options.overlay_enabled}, hotkeys={options.hotkeys_enabled}, ai={options.ai_advisor_enabled}, provider={options.ai_provider}, voice_input={options.voice_input_enabled}, voice_volume={options.voice_volume:.2f}"
         )
         self._worker = Thread(target=self._run_worker, args=(options,), name="gwh-gui-worker", daemon=True)
         self._worker.start()
@@ -241,6 +252,8 @@ class GuideDesktopApp:
             config.hotkeys_enabled = options.hotkeys_enabled
             config.ai_advisor_enabled = options.ai_advisor_enabled
             config.ai_advisor_provider = options.ai_provider
+            config.voice_input_enabled = options.voice_input_enabled
+            config.voice_input_wake_word = options.voice_input_wake_word
             config.voice_volume = options.voice_volume
             app = GuideAssistantApp(config)
             self._active_app = app
@@ -266,7 +279,17 @@ class GuideDesktopApp:
                 pos_y=config.overlay_pos_y,
             )
             hotkeys = HotkeyManager(control=control, enabled=config.hotkeys_enabled, status_handler=self._enqueue_log)
-            app.run_loop(game_id=options.game_id, control=control, overlay=overlay, hotkeys=hotkeys)
+            voice_commands = VoiceCommandManager(
+                control=control,
+                enabled=config.voice_input_enabled,
+                status_handler=self._enqueue_log,
+                language=config.voice_input_language,
+                wake_word=config.voice_input_wake_word,
+                listen_timeout_seconds=config.voice_input_listen_timeout_seconds,
+                phrase_time_limit_seconds=config.voice_input_phrase_time_limit_seconds,
+                error_backoff_seconds=config.voice_input_error_backoff_seconds,
+            )
+            app.run_loop(game_id=options.game_id, control=control, overlay=overlay, hotkeys=hotkeys, voice_input=voice_commands)
         except Exception:
             self._enqueue_log("Unhandled error in GUI worker:")
             self._enqueue_log(traceback.format_exc())
@@ -287,6 +310,8 @@ class GuideDesktopApp:
             hotkeys_enabled=self.hotkeys_var.get() == "1",
             ai_advisor_enabled=self.ai_advisor_var.get() == "1",
             ai_provider=self.ai_provider_var.get().strip().lower() or "openai",
+            voice_input_enabled=self.voice_input_var.get() == "1",
+            voice_input_wake_word=self.voice_wake_word_var.get().strip(),
             voice_volume=clamp_volume(self.voice_volume_var.get() / 100.0),
         )
 

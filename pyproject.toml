@@ -19,6 +19,7 @@ runtime = [
   "numpy>=2.1.0",
   "paddleocr>=2.8.1; python_version < '3.13'",
   "pyttsx3>=2.98",
+  "SpeechRecognition>=3.10.4",
   "PyYAML>=6.0.2",
   "pynput>=1.7.7",
   "requests>=2.32.0",

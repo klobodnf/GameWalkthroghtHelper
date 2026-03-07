@@ -16,6 +16,12 @@ class AppConfig:
     loop_interval_seconds: float = 1.0
     voice_cooldown_seconds: int = 30
     voice_volume: float = 0.8
+    voice_input_enabled: bool = False
+    voice_input_language: str = "zh-CN"
+    voice_input_wake_word: str = ""
+    voice_input_listen_timeout_seconds: float = 1.5
+    voice_input_phrase_time_limit_seconds: float = 3.0
+    voice_input_error_backoff_seconds: float = 3.0
     stabilizer_enabled: bool = True
     stabilizer_window_size: int = 6
     stabilizer_stable_hits: int = 3
@@ -78,6 +84,12 @@ def load_config(path: str | None) -> AppConfig:
 
 def _apply_env_overrides(config: AppConfig) -> None:
     overrides: dict[str, tuple[str, type]] = {
+        "voice_input_enabled": ("GWH_VOICE_INPUT_ENABLED", bool),
+        "voice_input_language": ("GWH_VOICE_INPUT_LANGUAGE", str),
+        "voice_input_wake_word": ("GWH_VOICE_INPUT_WAKE_WORD", str),
+        "voice_input_listen_timeout_seconds": ("GWH_VOICE_INPUT_LISTEN_TIMEOUT_SECONDS", float),
+        "voice_input_phrase_time_limit_seconds": ("GWH_VOICE_INPUT_PHRASE_TIME_LIMIT_SECONDS", float),
+        "voice_input_error_backoff_seconds": ("GWH_VOICE_INPUT_ERROR_BACKOFF_SECONDS", float),
         "ai_advisor_enabled": ("GWH_AI_ADVISOR_ENABLED", bool),
         "ai_advisor_provider": ("GWH_AI_ADVISOR_PROVIDER", str),
         "ai_advisor_protocol": ("GWH_AI_ADVISOR_PROTOCOL", str),

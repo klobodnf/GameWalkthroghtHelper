@@ -13,6 +13,7 @@
 9. Voice coach supports app-level volume control for TTS playback.
 10. Guide retriever supports preferred source domains with fallback to general search.
 11. Scene keyframe matcher enables progress hints even when mission text is absent.
+12. Optional voice input layer maps microphone commands to runtime controls (mute/pause/force hint/detail/quit).
 
 ## Design rules
 

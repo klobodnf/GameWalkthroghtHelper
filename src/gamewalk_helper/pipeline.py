@@ -21,6 +21,7 @@ from .scene import SceneMatch, SceneProgressMatcher
 from .stabilizer import ProgressStabilizer
 from .ui.overlay import OverlayStatus, OverlayWindow
 from .voice import VoiceCoach
+from .voice_input import VoiceCommandManager
 
 
 @dataclass(slots=True)
@@ -216,14 +217,18 @@ class GuideAssistantApp:
         control: RuntimeControl | None = None,
         overlay: OverlayWindow | None = None,
         hotkeys: HotkeyManager | None = None,
+        voice_input: VoiceCommandManager | None = None,
     ) -> None:
         runtime_control = control or RuntimeControl()
         overlay_enabled = overlay.start() if overlay is not None else False
         hotkeys_enabled = hotkeys.start() if hotkeys is not None else False
+        voice_input_enabled = voice_input.start() if voice_input is not None else False
         if hotkeys_enabled:
             print("全局热键已启用。")
         if overlay_enabled:
             print("悬浮窗已启用。")
+        if voice_input_enabled:
+            print("语音输入控制已启用。")
 
         last_hint = "等待识别任务文本..."
         last_task = ""
@@ -283,6 +288,8 @@ class GuideAssistantApp:
         finally:
             if hotkeys is not None:
                 hotkeys.stop()
+            if voice_input is not None:
+                voice_input.stop()
             if overlay is not None:
                 overlay.stop()
             self.stop_session()
