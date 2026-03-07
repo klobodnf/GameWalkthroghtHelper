@@ -34,6 +34,8 @@ When adding executable modules, also add and document stable project commands (v
 ## Commit & Pull Request Guidelines
 - There is no stable history yet; adopt Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`).
 - Keep each commit focused on one logical change.
+- Commit/Push workflow requirement: before every commit, sync user-visible changes to both `README.md` (English) and `README.zh-CN.md` (Chinese), including new features, commands, config keys, and behavior changes.
+- If a change has no README impact, still perform a quick README sync check before commit.
 - If the maintainer explicitly asks for "auto commit and push", commit all current tracked changes with a clear Conventional Commit message and push directly to `origin/main`.
 - Current maintainer preference: after requested code/document changes are completed, auto-commit and auto-push to `origin/main` by default unless the maintainer says not to push.
 - PRs should include a short summary, motivation, and test evidence.
