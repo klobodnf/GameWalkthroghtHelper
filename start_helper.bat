@@ -66,6 +66,12 @@ if /I "%ENTRY_MODE%"=="gui" (
     goto :exit_check
 )
 
+if /I "%ENTRY_MODE%"=="provider" (
+    echo [INFO] Opening AI provider configuration...
+    powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\set-ai-provider.ps1"
+    goto :exit_check
+)
+
 if /I "%ENTRY_MODE%"=="cli" (
     set "GAME_ID=%ARG2%"
     set "RUN_MODE=%ARG3%"
@@ -90,6 +96,7 @@ echo [ERROR] Unknown mode: %ENTRY_MODE%
 echo Usage:
 echo   start_helper.bat
 echo   start_helper.bat gui
+echo   start_helper.bat provider
 echo   start_helper.bat cli ^<game_id^> [once^|loop]
 goto :fail
 

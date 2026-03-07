@@ -29,6 +29,12 @@ Windows 推荐直接双击启动 GUI：
 start_helper.bat
 ```
 
+提供商配置助手（交互式一键配置）：
+
+```text
+configure_ai_provider.bat
+```
+
 默认行为：
 - 扫描并导入本机 Steam 库，
 - 在 GUI 中列出已安装游戏，
@@ -180,6 +186,26 @@ setx GWH_AI_ADVISOR_API_KEY_ENV "ANTHROPIC_API_KEY"
 setx GOOGLE_API_KEY "your_google_key"
 setx GWH_AI_ADVISOR_PROVIDER "gemini"
 setx GWH_AI_ADVISOR_API_KEY_ENV "GOOGLE_API_KEY"
+```
+
+一键交互配置：
+
+```text
+configure_ai_provider.bat
+```
+
+或通过启动器：
+
+```text
+start_helper.bat provider
+```
+
+脚本参数方式示例：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/set-ai-provider.ps1 -Provider kimi -ApiKey "sk-..."
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/set-ai-provider.ps1 -Provider deepseek -ApiKey "sk-..."
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/set-ai-provider.ps1 -Provider ollama
 ```
 
 如果是自定义 OpenAI 兼容网关，可设置：

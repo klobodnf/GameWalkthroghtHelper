@@ -29,6 +29,12 @@ Desktop GUI launcher (recommended on Windows):
 start_helper.bat
 ```
 
+Provider setup helper (interactive, one-click):
+
+```text
+configure_ai_provider.bat
+```
+
 Default behavior:
 - auto-scan and import your Steam library,
 - show installed games in a GUI selector,
@@ -180,6 +186,26 @@ setx GWH_AI_ADVISOR_API_KEY_ENV "ANTHROPIC_API_KEY"
 setx GOOGLE_API_KEY "your_google_key"
 setx GWH_AI_ADVISOR_PROVIDER "gemini"
 setx GWH_AI_ADVISOR_API_KEY_ENV "GOOGLE_API_KEY"
+```
+
+One-click interactive setup:
+
+```text
+configure_ai_provider.bat
+```
+
+Or from launcher:
+
+```text
+start_helper.bat provider
+```
+
+Scripted setup examples:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/set-ai-provider.ps1 -Provider kimi -ApiKey "sk-..."
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/set-ai-provider.ps1 -Provider deepseek -ApiKey "sk-..."
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/set-ai-provider.ps1 -Provider ollama
 ```
 
 For custom OpenAI-compatible gateways, set:
