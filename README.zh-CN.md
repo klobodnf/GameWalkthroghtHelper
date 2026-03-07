@@ -155,6 +155,24 @@ setx GWH_AI_ADVISOR_BASE_URL "https://api.moonshot.cn/v1"
 setx GWH_AI_ADVISOR_MODEL "moonshot-v1-8k"
 ```
 
+## 数据库与缓存
+
+程序使用 SQLite 作为本地唯一状态库（默认：`data/gamewalk.db`，可通过 `db_path` 配置修改）。
+
+核心表：
+- `games`、`sessions`、`observations`、`progress_states`
+- `guide_docs`、`guide_steps`、`retrieval_cache`
+- `voice_history`、`steam_apps`、`scene_keyframes`
+
+常用命令：
+
+```powershell
+gwh init-db --config config/default.yaml
+python -c "import sqlite3; c=sqlite3.connect('data/gamewalk.db'); print([r[0] for r in c.execute(\"select name from sqlite_master where type='table' order by name\")]); c.close()"
+```
+
+建议：定期备份 `data/gamewalk.db`，可保留游戏画像、攻略缓存与场景关键帧数据。
+
 ## 项目结构
 
 - `src/gamewalk_helper/`：核心应用模块。

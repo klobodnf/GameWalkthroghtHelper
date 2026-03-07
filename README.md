@@ -155,6 +155,24 @@ setx GWH_AI_ADVISOR_BASE_URL "https://api.moonshot.cn/v1"
 setx GWH_AI_ADVISOR_MODEL "moonshot-v1-8k"
 ```
 
+## Database & Cache
+
+The app uses SQLite as the single local state store (default: `data/gamewalk.db`, configurable via `db_path`).
+
+Core tables:
+- `games`, `sessions`, `observations`, `progress_states`
+- `guide_docs`, `guide_steps`, `retrieval_cache`
+- `voice_history`, `steam_apps`, `scene_keyframes`
+
+Useful commands:
+
+```powershell
+gwh init-db --config config/default.yaml
+python -c "import sqlite3; c=sqlite3.connect('data/gamewalk.db'); print([r[0] for r in c.execute(\"select name from sqlite_master where type='table' order by name\")]); c.close()"
+```
+
+Recommendation: back up `data/gamewalk.db` periodically if you want to preserve game profiles, cached guide candidates, and scene keyframes.
+
 ## Project Layout
 
 - `src/gamewalk_helper/`: Core application modules.
