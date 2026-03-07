@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import json
+import os
 
 
 @dataclass(slots=True)
@@ -54,7 +55,9 @@ class AppConfig:
 
 def load_config(path: str | None) -> AppConfig:
     if not path:
-        return AppConfig()
+        config = AppConfig()
+        _apply_env_overrides(config)
+        return config
     config_path = Path(path)
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -64,7 +67,52 @@ def load_config(path: str | None) -> AppConfig:
         data = json.loads(raw)
     else:
         data = _load_yaml_like(raw)
-    return AppConfig(**{k: v for k, v in data.items() if hasattr(AppConfig, k)})
+    config = AppConfig(**{k: v for k, v in data.items() if hasattr(AppConfig, k)})
+    _apply_env_overrides(config)
+    return config
+
+
+def _apply_env_overrides(config: AppConfig) -> None:
+    overrides: dict[str, tuple[str, type]] = {
+        "ai_advisor_enabled": ("GWH_AI_ADVISOR_ENABLED", bool),
+        "ai_advisor_api_key_env": ("GWH_AI_ADVISOR_API_KEY_ENV", str),
+        "ai_advisor_model": ("GWH_AI_ADVISOR_MODEL", str),
+        "ai_advisor_base_url": ("GWH_AI_ADVISOR_BASE_URL", str),
+        "ai_advisor_timeout_seconds": ("GWH_AI_ADVISOR_TIMEOUT_SECONDS", int),
+        "ai_advisor_max_tokens": ("GWH_AI_ADVISOR_MAX_TOKENS", int),
+        "ai_advisor_cooldown_seconds": ("GWH_AI_ADVISOR_COOLDOWN_SECONDS", int),
+    }
+    for attr, (env_name, expected_type) in overrides.items():
+        raw = os.getenv(env_name, "").strip()
+        if not raw:
+            continue
+        value = _parse_env_value(raw, expected_type)
+        if value is None:
+            continue
+        setattr(config, attr, value)
+
+
+def _parse_env_value(raw: str, expected_type: type) -> Any:
+    if expected_type is str:
+        return raw
+    if expected_type is bool:
+        lowered = raw.lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+        return None
+    if expected_type is int:
+        try:
+            return int(raw)
+        except ValueError:
+            return None
+    if expected_type is float:
+        try:
+            return float(raw)
+        except ValueError:
+            return None
+    return None
 
 
 def _load_yaml_like(raw: str) -> dict[str, Any]:

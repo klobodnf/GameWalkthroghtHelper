@@ -146,6 +146,15 @@ ai_advisor_model: gpt-4o-mini
 ai_advisor_base_url: https://api.openai.com/v1
 ```
 
+Kimi（Moonshot）可通过环境变量快速切换（不把 Key 写入代码）：
+
+```powershell
+setx KIMI_API_KEY "your_kimi_key"
+setx GWH_AI_ADVISOR_API_KEY_ENV "KIMI_API_KEY"
+setx GWH_AI_ADVISOR_BASE_URL "https://api.moonshot.cn/v1"
+setx GWH_AI_ADVISOR_MODEL "moonshot-v1-8k"
+```
+
 ## 项目结构
 
 - `src/gamewalk_helper/`：核心应用模块。
